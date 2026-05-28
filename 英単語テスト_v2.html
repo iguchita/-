@@ -1,0 +1,5329 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>英単語確認テスト</title>
+  <style>
+    :root{--bg:#f4f7fb;--card:#fff;--main:#2563eb;--main-dark:#1e40af;--text:#1f2937;--muted:#6b7280;--border:#d1d5db;--ok-bg:#dcfce7;--ok-text:#166534;--ng-bg:#fee2e2;--ng-text:#991b1b}*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);line-height:1.6}.container{width:min(920px,92vw);margin:0 auto;padding:28px 0 48px}h1{font-size:clamp(1.6rem,4vw,2.2rem);margin:0 0 8px}h2{margin-top:0}.lead,.small{color:var(--muted)}.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;margin-top:16px;box-shadow:0 8px 24px rgba(15,23,42,.06)}.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}button{border:none;border-radius:12px;padding:12px 18px;font-size:1rem;font-weight:700;cursor:pointer;color:#fff;background:var(--main);transition:.15s}button:hover:not(:disabled){background:var(--main-dark);transform:translateY(-1px)}button.secondary{background:#334155}button.secondary:hover:not(:disabled){background:#1f2937}button.ghost{color:var(--text);background:#e5e7eb}button.ghost:hover:not(:disabled){background:#d1d5db}button:disabled{opacity:.45;cursor:not-allowed}input[type="text"],input[type="number"]{width:100%;padding:16px;border:2px solid var(--border);border-radius:14px;font-size:1.1rem;outline:none}input[type="text"]:focus,input[type="number"]:focus{border-color:var(--main);box-shadow:0 0 0 4px rgba(37,99,235,.12)}.settings-grid{display:grid;grid-template-columns:1fr 220px;gap:18px;align-items:start}.lesson-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-top:10px}.lesson-item{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#f8fafc;font-weight:700;cursor:pointer;user-select:none}.lesson-item input{width:18px;height:18px;accent-color:var(--main)}.status{margin-top:12px;color:var(--muted);font-weight:700}.error{margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--ng-bg);color:var(--ng-text);font-weight:700;display:none}.quiz-meta{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-weight:700;margin-bottom:12px}.question-box{padding:24px;background:#f8fafc;border:1px solid var(--border);border-radius:16px;margin-bottom:18px}.question-label{color:var(--muted);margin:0 0 8px;font-weight:700}.japanese{font-size:clamp(1.8rem,7vw,3rem);font-weight:800;margin:0}.feedback{display:none;padding:14px 16px;border-radius:14px;font-weight:800;margin-top:14px}.feedback.correct{display:block;background:var(--ok-bg);color:var(--ok-text)}.feedback.incorrect{display:block;background:var(--ng-bg);color:var(--ng-text)}.answer-text{margin-top:8px;font-weight:700}.hidden{display:none}.result-score{font-size:2rem;font-weight:900;margin:6px 0 12px}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border-bottom:1px solid var(--border);padding:10px;text-align:left;vertical-align:top}th{background:#f1f5f9}@media(max-width:720px){.settings-grid{grid-template-columns:1fr}}@media(max-width:640px){.card{padding:16px}.row{flex-direction:column;align-items:stretch}button{width:100%}.quiz-meta{flex-direction:column}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header><h1>英単語確認テスト</h1><p class="lead">範囲を選び、日本語訳を見て英単語を入力します。</p></header>
+
+    <section class="card">
+      <h2>1. 出題設定</h2>
+      <p id="wordDataStatus" class="status">単語データを確認中です。</p>
+      <div class="settings-grid">
+        <div>
+          <h3>Lessonを選ぶ</h3>
+          <div class="row"><button id="selectAllLessonsBtn" class="ghost" type="button">すべて選択</button><button id="clearLessonsBtn" class="ghost" type="button">選択を解除</button></div>
+          <div id="lessonList" class="lesson-list"></div>
+        </div>
+        <div>
+          <h3>問題数</h3>
+          <input id="questionCountInput" type="number" min="1" max="100" value="20" />
+        </div>
+      </div>
+      <div id="errorMessage" class="error"></div>
+    </section>
+
+    <section class="card"><h2>2. テスト開始</h2><div class="row"><button id="startNormalBtn">選択した範囲で開始</button><button id="startReviewBtn" class="secondary">直近1日以内の間違いを復習</button><button id="showMistakesBtn" class="ghost">保存中の間違い一覧</button></div></section>
+
+    <section id="quizSection" class="card hidden">
+      <div class="quiz-meta"><span id="quizMode">通常テスト</span><span id="questionCounter">1 / 20</span></div>
+      <div class="question-box"><p class="question-label">日本語訳</p><p id="japaneseQuestion" class="japanese">---</p></div>
+      <label for="answerInput"><strong>英単語を入力</strong></label>
+      <input id="answerInput" type="text" autocomplete="off" placeholder="例：apple" />
+      <div id="feedback" class="feedback"></div><p id="correctAnswer" class="answer-text hidden"></p>
+      <div class="row" style="margin-top:16px"><button id="submitBtn">解答する</button><button id="nextBtn" class="secondary hidden">次の問題へ</button></div>
+    </section>
+
+    <section id="resultSection" class="card hidden"><h2>結果</h2><p id="resultScore" class="result-score"></p><div id="wrongList"></div><div class="row" style="margin-top:16px"><button id="restartBtn">設定画面に戻る</button></div></section>
+
+    <section id="mistakeSection" class="card hidden"><h2>保存中の間違い一覧</h2><p class="small">復習で正解した単語は、この一覧から削除されます。復習でまた間違えた単語は残ります。</p><div id="mistakeList"></div><div class="row" style="margin-top:16px"><button id="clearMistakesBtn" class="ghost">間違い記録を削除</button></div></section>
+  </div>
+
+  <script>
+    // Excel変換ツールで生成した const WORD_DATA = [...] と差し替えてください。
+   const WORD_DATA = [
+  {
+    "english": "America",
+    "japanese": "アメリカ，アメリカ合衆国",
+    "lesson": "L01"
+  },
+  {
+    "english": "Australia",
+    "japanese": "オーストラリア",
+    "lesson": "L01"
+  },
+  {
+    "english": "Canada",
+    "japanese": "カナダ",
+    "lesson": "L01"
+  },
+  {
+    "english": "China",
+    "japanese": "中国",
+    "lesson": "L01"
+  },
+  {
+    "english": "Japan",
+    "japanese": "日本",
+    "lesson": "L01"
+  },
+  {
+    "english": "South Korea",
+    "japanese": "韓国",
+    "lesson": "L01"
+  },
+  {
+    "english": "France",
+    "japanese": "フランス",
+    "lesson": "L01"
+  },
+  {
+    "english": "the UK",
+    "japanese": "イギリス《the United Kingdom の略》",
+    "lesson": "L01"
+  },
+  {
+    "english": "hello",
+    "japanese": "やあ，こんにちは",
+    "lesson": "L01"
+  },
+  {
+    "english": "hi",
+    "japanese": "やあ",
+    "lesson": "L01"
+  },
+  {
+    "english": "I",
+    "japanese": "私は〔が〕，僕は〔が〕",
+    "lesson": "L01"
+  },
+  {
+    "english": "am",
+    "japanese": "～である，～にいる《be動詞の1人称単数現在形》",
+    "lesson": "L01"
+  },
+  {
+    "english": "Karen",
+    "japanese": "カレン《女性名》",
+    "lesson": "L01"
+  },
+  {
+    "english": "I'm",
+    "japanese": "I am の短縮形",
+    "lesson": "L01"
+  },
+  {
+    "english": "call",
+    "japanese": "呼ぶ",
+    "lesson": "L01"
+  },
+  {
+    "english": "you",
+    "japanese": "あなた（たち）に〔を〕，あなた（たち）は〔が〕",
+    "lesson": "L01"
+  },
+  {
+    "english": "too",
+    "japanese": "～もまた",
+    "lesson": "L01"
+  },
+  {
+    "english": "are",
+    "japanese": "～である，～にいる《be動詞の2人称単数現在形と1・2・3人称複数現在形》",
+    "lesson": "L01"
+  },
+  {
+    "english": "from",
+    "japanese": "～出身の，～から《起点を表す》",
+    "lesson": "L01"
+  },
+  {
+    "english": "no",
+    "japanese": "いいえ",
+    "lesson": "L01"
+  },
+  {
+    "english": "not",
+    "japanese": "…でない",
+    "lesson": "L01"
+  },
+  {
+    "english": "my",
+    "japanese": "私の，僕の",
+    "lesson": "L01"
+  },
+  {
+    "english": "is",
+    "japanese": "～である，～にいる《be の3 人称単数現在形》",
+    "lesson": "L01"
+  },
+  {
+    "english": "Mary",
+    "japanese": "メアリー《女性名》",
+    "lesson": "L01"
+  },
+  {
+    "english": "Smith",
+    "japanese": "スミス《姓》",
+    "lesson": "L01"
+  },
+  {
+    "english": "Tom",
+    "japanese": "トム《男性名》",
+    "lesson": "L01"
+  },
+  {
+    "english": "you're",
+    "japanese": "you are の短縮形",
+    "lesson": "L01"
+  },
+  {
+    "english": "aren't",
+    "japanese": "are not の短縮形",
+    "lesson": "L01"
+  },
+  {
+    "english": "yes",
+    "japanese": "はい，そうです",
+    "lesson": "L01"
+  },
+  {
+    "english": "Mr.",
+    "japanese": "《男性の姓の前で》～さん，～先生",
+    "lesson": "L01"
+  },
+  {
+    "english": "Jones",
+    "japanese": "ジョーンズ《姓》",
+    "lesson": "L01"
+  },
+  {
+    "english": "this",
+    "japanese": "これ，こちら",
+    "lesson": "L01"
+  },
+  {
+    "english": "your",
+    "japanese": "あなた（たち）の",
+    "lesson": "L01"
+  },
+  {
+    "english": "teacher",
+    "japanese": "先生，教師",
+    "lesson": "L01"
+  },
+  {
+    "english": "student",
+    "japanese": "生徒，学生",
+    "lesson": "L01"
+  },
+  {
+    "english": "card",
+    "japanese": "カード",
+    "lesson": "L01"
+  },
+  {
+    "english": "here",
+    "japanese": "ここで〔に〕",
+    "lesson": "L01"
+  },
+  {
+    "english": "and",
+    "japanese": "～と…，そして",
+    "lesson": "L01"
+  },
+  {
+    "english": "that's",
+    "japanese": "that is の短縮形",
+    "lesson": "L01"
+  },
+  {
+    "english": "locker",
+    "japanese": "ロッカー",
+    "lesson": "L01"
+  },
+  {
+    "english": "thank",
+    "japanese": "ありがとう",
+    "lesson": "L01"
+  },
+  {
+    "english": "Lisa",
+    "japanese": "リサ《女性名》",
+    "lesson": "L01"
+  },
+  {
+    "english": "that",
+    "japanese": "あれ，あちら",
+    "lesson": "L01"
+  },
+  {
+    "english": "isn't",
+    "japanese": "is not の短縮形",
+    "lesson": "L01"
+  },
+  {
+    "english": "it",
+    "japanese": "それは〔が〕",
+    "lesson": "L01"
+  },
+  {
+    "english": "it's",
+    "japanese": "it is の短縮形",
+    "lesson": "L01"
+  },
+  {
+    "english": "sister",
+    "japanese": "姉，妹",
+    "lesson": "L01"
+  },
+  {
+    "english": "Bill",
+    "japanese": "ビル《男性名》",
+    "lesson": "L01"
+  },
+  {
+    "english": "OK",
+    "japanese": "よろしい，わかった",
+    "lesson": "L01"
+  },
+  {
+    "english": "let's",
+    "japanese": "…しよう《let us の短縮形》",
+    "lesson": "L01"
+  },
+  {
+    "english": "start",
+    "japanese": "始める",
+    "lesson": "L01"
+  },
+  {
+    "english": "everyone",
+    "japanese": "みんな，誰でも",
+    "lesson": "L01"
+  },
+  {
+    "english": "year",
+    "japanese": "～歳",
+    "lesson": "L01"
+  },
+  {
+    "english": "old",
+    "japanese": "古い，年をとった",
+    "lesson": "L01"
+  },
+  {
+    "english": "favorite",
+    "japanese": "お気に入りの",
+    "lesson": "L01"
+  },
+  {
+    "english": "Japanese",
+    "japanese": "日本（人，語）の",
+    "lesson": "L01"
+  },
+  {
+    "english": "food",
+    "japanese": "食べ物，料理",
+    "lesson": "L01"
+  },
+  {
+    "english": "next",
+    "japanese": "次の人，次のもの",
+    "lesson": "L01"
+  },
+  {
+    "english": "So-yon",
+    "japanese": "ソヨン《女性名》",
+    "lesson": "L01"
+  },
+  {
+    "english": "kimchi",
+    "japanese": "キムチ",
+    "lesson": "L01"
+  },
+  {
+    "english": "like",
+    "japanese": "～が好きである，～を好む",
+    "lesson": "L01"
+  },
+  {
+    "english": "hot",
+    "japanese": "辛い（からい）",
+    "lesson": "L01"
+  },
+  {
+    "english": "good",
+    "japanese": "よい",
+    "lesson": "L01"
+  },
+  {
+    "english": "job",
+    "japanese": "仕事，職",
+    "lesson": "L01"
+  },
+  {
+    "english": "Leo",
+    "japanese": "レオ《男性名》",
+    "lesson": "L01"
+  },
+  {
+    "english": "Finland",
+    "japanese": "フィンランド",
+    "lesson": "L01"
+  },
+  {
+    "english": "salmon",
+    "japanese": "サケ",
+    "lesson": "L01"
+  },
+  {
+    "english": "soup",
+    "japanese": "スープ",
+    "lesson": "L01"
+  },
+  {
+    "english": "New York",
+    "japanese": "ニューヨーク《地名》",
+    "lesson": "L01"
+  },
+  {
+    "english": "Sydney",
+    "japanese": "シドニー《地名》",
+    "lesson": "L01"
+  },
+  {
+    "english": "Beijing",
+    "japanese": "ペキン（北京）《地名》",
+    "lesson": "L01"
+  },
+  {
+    "english": "Paris",
+    "japanese": "パリ《地名》",
+    "lesson": "L01"
+  },
+  {
+    "english": "London",
+    "japanese": "ロンドン《地名》",
+    "lesson": "L01"
+  },
+  {
+    "english": "hmm",
+    "japanese": "ふーむ",
+    "lesson": "L01"
+  },
+  {
+    "english": "delicious",
+    "japanese": "おいしい",
+    "lesson": "L01"
+  },
+  {
+    "english": "sweet",
+    "japanese": "甘い",
+    "lesson": "L01"
+  },
+  {
+    "english": "sour",
+    "japanese": "すっぱい",
+    "lesson": "L01"
+  },
+  {
+    "english": "hard",
+    "japanese": "かたい，しっかりした",
+    "lesson": "L01"
+  },
+  {
+    "english": "soft",
+    "japanese": "柔らかい",
+    "lesson": "L01"
+  },
+  {
+    "english": "chef",
+    "japanese": "料理長，料理人",
+    "lesson": "L02"
+  },
+  {
+    "english": "doctor",
+    "japanese": "医者",
+    "lesson": "L02"
+  },
+  {
+    "english": "nurse",
+    "japanese": "看護師",
+    "lesson": "L02"
+  },
+  {
+    "english": "firefighter",
+    "japanese": "消防士",
+    "lesson": "L02"
+  },
+  {
+    "english": "police officer",
+    "japanese": "警官",
+    "lesson": "L02"
+  },
+  {
+    "english": "pilot",
+    "japanese": "パイロット，操縦士",
+    "lesson": "L02"
+  },
+  {
+    "english": "office worker",
+    "japanese": "会社員",
+    "lesson": "L02"
+  },
+  {
+    "english": "vet",
+    "japanese": "獣医",
+    "lesson": "L02"
+  },
+  {
+    "english": "Andy",
+    "japanese": "アンディ《男性名》",
+    "lesson": "L02"
+  },
+  {
+    "english": "he",
+    "japanese": "彼は〔が〕",
+    "lesson": "L02"
+  },
+  {
+    "english": "Hong Kong",
+    "japanese": "香港《地名》",
+    "lesson": "L02"
+  },
+  {
+    "english": "classmate",
+    "japanese": "クラスメイト，同級生",
+    "lesson": "L02"
+  },
+  {
+    "english": "Amy",
+    "japanese": "エイミー《女性名》",
+    "lesson": "L02"
+  },
+  {
+    "english": "she",
+    "japanese": "彼女は〔が〕",
+    "lesson": "L02"
+  },
+  {
+    "english": "her",
+    "japanese": "彼女の",
+    "lesson": "L02"
+  },
+  {
+    "english": "father",
+    "japanese": "父，父親",
+    "lesson": "L02"
+  },
+  {
+    "english": "mother",
+    "japanese": "母，母親",
+    "lesson": "L02"
+  },
+  {
+    "english": "he's",
+    "japanese": "he is の短縮形",
+    "lesson": "L02"
+  },
+  {
+    "english": "she's",
+    "japanese": "she is の短縮形",
+    "lesson": "L02"
+  },
+  {
+    "english": "math",
+    "japanese": "数学",
+    "lesson": "L02"
+  },
+  {
+    "english": "science",
+    "japanese": "理科",
+    "lesson": "L02"
+  },
+  {
+    "english": "English",
+    "japanese": "英語",
+    "lesson": "L02"
+  },
+  {
+    "english": "Ms.",
+    "japanese": "《未婚・既婚女性の姓の前で》～さん，～先生",
+    "lesson": "L02"
+  },
+  {
+    "english": "friend",
+    "japanese": "友だち，友人",
+    "lesson": "L02"
+  },
+  {
+    "english": "his",
+    "japanese": "彼の",
+    "lesson": "L02"
+  },
+  {
+    "english": "Brown",
+    "japanese": "ブラウン《姓》",
+    "lesson": "L02"
+  },
+  {
+    "english": "what",
+    "japanese": "何",
+    "lesson": "L02"
+  },
+  {
+    "english": "a",
+    "japanese": "１つの，１人の",
+    "lesson": "L02"
+  },
+  {
+    "english": "big",
+    "japanese": "大きい",
+    "lesson": "L02"
+  },
+  {
+    "english": "book",
+    "japanese": "本，書籍",
+    "lesson": "L02"
+  },
+  {
+    "english": "what's",
+    "japanese": "what is の短縮形",
+    "lesson": "L02"
+  },
+  {
+    "english": "lunchbox",
+    "japanese": "お弁当",
+    "lesson": "L02"
+  },
+  {
+    "english": "hey",
+    "japanese": "おい，ちょっと",
+    "lesson": "L02"
+  },
+  {
+    "english": "time",
+    "japanese": "時刻",
+    "lesson": "L02"
+  },
+  {
+    "english": "o'clock",
+    "japanese": "（ちょうど）～時",
+    "lesson": "L02"
+  },
+  {
+    "english": "lunch",
+    "japanese": "昼食",
+    "lesson": "L02"
+  },
+  {
+    "english": "now",
+    "japanese": "今",
+    "lesson": "L02"
+  },
+  {
+    "english": "radish",
+    "japanese": "ハツカダイコン，ラディッシュ",
+    "lesson": "L02"
+  },
+  {
+    "english": "an",
+    "japanese": "１つの，１人の《母音で始まる語の前につけて》",
+    "lesson": "L02"
+  },
+  {
+    "english": "eggplant",
+    "japanese": "ナス",
+    "lesson": "L02"
+  },
+  {
+    "english": "tall",
+    "japanese": "背が高い",
+    "lesson": "L02"
+  },
+  {
+    "english": "boy",
+    "japanese": "男の子，少年",
+    "lesson": "L02"
+  },
+  {
+    "english": "small",
+    "japanese": "小さい",
+    "lesson": "L02"
+  },
+  {
+    "english": "hungry",
+    "japanese": "空腹の",
+    "lesson": "L02"
+  },
+  {
+    "english": "bad",
+    "japanese": "悪い",
+    "lesson": "L02"
+  },
+  {
+    "english": "new",
+    "japanese": "新しい",
+    "lesson": "L02"
+  },
+  {
+    "english": "young",
+    "japanese": "若い",
+    "lesson": "L02"
+  },
+  {
+    "english": "man",
+    "japanese": "男，男性",
+    "lesson": "L02"
+  },
+  {
+    "english": "long",
+    "japanese": "長い",
+    "lesson": "L02"
+  },
+  {
+    "english": "short",
+    "japanese": "短い，背の低い",
+    "lesson": "L02"
+  },
+  {
+    "english": "girl",
+    "japanese": "女の子，少女",
+    "lesson": "L02"
+  },
+  {
+    "english": "high",
+    "japanese": "高い",
+    "lesson": "L02"
+  },
+  {
+    "english": "low",
+    "japanese": "低い",
+    "lesson": "L02"
+  },
+  {
+    "english": "building",
+    "japanese": "建物",
+    "lesson": "L02"
+  },
+  {
+    "english": "lady",
+    "japanese": "女の人，女性",
+    "lesson": "L02"
+  },
+  {
+    "english": "who",
+    "japanese": "誰",
+    "lesson": "L02"
+  },
+  {
+    "english": "Maria",
+    "japanese": "マリア《女性名》",
+    "lesson": "L02"
+  },
+  {
+    "english": "or",
+    "japanese": "～または…",
+    "lesson": "L02"
+  },
+  {
+    "english": "oh",
+    "japanese": "おお，まあ",
+    "lesson": "L02"
+  },
+  {
+    "english": "see",
+    "japanese": "わかる",
+    "lesson": "L02"
+  },
+  {
+    "english": "Howard",
+    "japanese": "ハワード《姓》，《男性名》",
+    "lesson": "L02"
+  },
+  {
+    "english": "P.E.",
+    "japanese": "体育",
+    "lesson": "L02"
+  },
+  {
+    "english": "uh-huh",
+    "japanese": "なるほど，ふーん",
+    "lesson": "L02"
+  },
+  {
+    "english": "really",
+    "japanese": "本当に",
+    "lesson": "L02"
+  },
+  {
+    "english": "right",
+    "japanese": "正しい",
+    "lesson": "L02"
+  },
+  {
+    "english": "temple",
+    "japanese": "寺，寺院",
+    "lesson": "L02"
+  },
+  {
+    "english": "who's",
+    "japanese": "who is の短縮形",
+    "lesson": "L02"
+  },
+  {
+    "english": "uncle",
+    "japanese": "おじ",
+    "lesson": "L02"
+  },
+  {
+    "english": "fruit",
+    "japanese": "果物",
+    "lesson": "L02"
+  },
+  {
+    "english": "vegetable",
+    "japanese": "野菜",
+    "lesson": "L02"
+  },
+  {
+    "english": "family",
+    "japanese": "家族",
+    "lesson": "L02"
+  },
+  {
+    "english": "on",
+    "japanese": "《日》～に",
+    "lesson": "L02"
+  },
+  {
+    "english": "New Year's Day",
+    "japanese": "元日，年の始め",
+    "lesson": "L02"
+  },
+  {
+    "english": "woman",
+    "japanese": "女，女性",
+    "lesson": "L02"
+  },
+  {
+    "english": "very",
+    "japanese": "とても",
+    "lesson": "L02"
+  },
+  {
+    "english": "busy",
+    "japanese": "忙しい",
+    "lesson": "L02"
+  },
+  {
+    "english": "elementary school",
+    "japanese": "小学校",
+    "lesson": "L02"
+  },
+  {
+    "english": "Janet",
+    "japanese": "ジャネット《女性名》",
+    "lesson": "L02"
+  },
+  {
+    "english": "great",
+    "japanese": "とてもよい，すばらしい",
+    "lesson": "L02"
+  },
+  {
+    "english": "beautiful",
+    "japanese": "美しい，きれいな",
+    "lesson": "L02"
+  },
+  {
+    "english": "for",
+    "japanese": "～のための〔に〕",
+    "lesson": "L02"
+  },
+  {
+    "english": "wedding",
+    "japanese": "結婚式",
+    "lesson": "L02"
+  },
+  {
+    "english": "toy",
+    "japanese": "おもちゃ",
+    "lesson": "L02"
+  },
+  {
+    "english": "tool",
+    "japanese": "道具，手段",
+    "lesson": "L02"
+  },
+  {
+    "english": "at",
+    "japanese": "《場所・時刻》～で，～に",
+    "lesson": "L02"
+  },
+  {
+    "english": "kind",
+    "japanese": "親切な，優しい",
+    "lesson": "L02"
+  },
+  {
+    "english": "grandfather",
+    "japanese": "祖父",
+    "lesson": "L02"
+  },
+  {
+    "english": "grandmother",
+    "japanese": "祖母",
+    "lesson": "L02"
+  },
+  {
+    "english": "aunt",
+    "japanese": "おば",
+    "lesson": "L02"
+  },
+  {
+    "english": "dad",
+    "japanese": "パパ，お父さん",
+    "lesson": "L02"
+  },
+  {
+    "english": "mom",
+    "japanese": "ママ，お母さん",
+    "lesson": "L02"
+  },
+  {
+    "english": "cousin",
+    "japanese": "いとこ",
+    "lesson": "L02"
+  },
+  {
+    "english": "brother",
+    "japanese": "兄，弟",
+    "lesson": "L02"
+  },
+  {
+    "english": "funny",
+    "japanese": "おかしい，こっけいな",
+    "lesson": "L02"
+  },
+  {
+    "english": "shy",
+    "japanese": "恥ずかしがりの，内気な",
+    "lesson": "L02"
+  },
+  {
+    "english": "friendly",
+    "japanese": "好意的な，親切な",
+    "lesson": "L02"
+  },
+  {
+    "english": "smart",
+    "japanese": "利口な，賢い",
+    "lesson": "L02"
+  },
+  {
+    "english": "play",
+    "japanese": "《スポーツ・遊びなど》～をする，《楽器》～を演奏する",
+    "lesson": "L03"
+  },
+  {
+    "english": "in",
+    "japanese": "～（の中）で，～（の中）に",
+    "lesson": "L03"
+  },
+  {
+    "english": "the",
+    "japanese": "その《1度述べた名詞を繰り返し述べる場合に名詞の前につける，またある特定の表現の中で名詞の前につける》",
+    "lesson": "L03"
+  },
+  {
+    "english": "park",
+    "japanese": "公園",
+    "lesson": "L03"
+  },
+  {
+    "english": "with",
+    "japanese": "～と一緒に，～を相手に",
+    "lesson": "L03"
+  },
+  {
+    "english": "piano",
+    "japanese": "ピアノ",
+    "lesson": "L03"
+  },
+  {
+    "english": "trumpet",
+    "japanese": "トランペット",
+    "lesson": "L03"
+  },
+  {
+    "english": "drum",
+    "japanese": "太鼓，ドラム",
+    "lesson": "L03"
+  },
+  {
+    "english": "soccer",
+    "japanese": "サッカー",
+    "lesson": "L03"
+  },
+  {
+    "english": "basketball",
+    "japanese": "バスケットボール",
+    "lesson": "L03"
+  },
+  {
+    "english": "every",
+    "japanese": "毎～，～ごとに",
+    "lesson": "L03"
+  },
+  {
+    "english": "do",
+    "japanese": "《一般動詞とともに用い，現在形の疑問文・応答文・否定文を作る》",
+    "lesson": "L03"
+  },
+  {
+    "english": "don't",
+    "japanese": "do not の短縮形",
+    "lesson": "L03"
+  },
+  {
+    "english": "but",
+    "japanese": "しかし",
+    "lesson": "L03"
+  },
+  {
+    "english": "tennis",
+    "japanese": "テニス",
+    "lesson": "L03"
+  },
+  {
+    "english": "practice",
+    "japanese": "～を練習する",
+    "lesson": "L03"
+  },
+  {
+    "english": "week",
+    "japanese": "1週間，週",
+    "lesson": "L03"
+  },
+  {
+    "english": "after",
+    "japanese": "～のあとに",
+    "lesson": "L03"
+  },
+  {
+    "english": "well",
+    "japanese": "上手に",
+    "lesson": "L03"
+  },
+  {
+    "english": "much",
+    "japanese": "とても，非常に",
+    "lesson": "L03"
+  },
+  {
+    "english": "day",
+    "japanese": "日，1日",
+    "lesson": "L03"
+  },
+  {
+    "english": "speak",
+    "japanese": "～を話す",
+    "lesson": "L03"
+  },
+  {
+    "english": "study",
+    "japanese": "～を勉強する",
+    "lesson": "L03"
+  },
+  {
+    "english": "party",
+    "japanese": "パーティー",
+    "lesson": "L03"
+  },
+  {
+    "english": "American",
+    "japanese": "アメリカ（合衆国）の，アメリカ人の",
+    "lesson": "L03"
+  },
+  {
+    "english": "sandwich",
+    "japanese": "サンドイッチ",
+    "lesson": "L03"
+  },
+  {
+    "english": "how",
+    "japanese": "どのようにして，どんなふうに",
+    "lesson": "L03"
+  },
+  {
+    "english": "about",
+    "japanese": "～について",
+    "lesson": "L03"
+  },
+  {
+    "english": "candy",
+    "japanese": "キャンディー，砂糖菓子",
+    "lesson": "L03"
+  },
+  {
+    "english": "over",
+    "japanese": "越えて，向こうに",
+    "lesson": "L03"
+  },
+  {
+    "english": "there",
+    "japanese": "そこに〔へ〕",
+    "lesson": "L03"
+  },
+  {
+    "english": "many",
+    "japanese": "たくさんの，多くの",
+    "lesson": "L03"
+  },
+  {
+    "english": "want",
+    "japanese": "～が欲しい",
+    "lesson": "L03"
+  },
+  {
+    "english": "have",
+    "japanese": "～を持っている",
+    "lesson": "L03"
+  },
+  {
+    "english": "ball",
+    "japanese": "ボール",
+    "lesson": "L03"
+  },
+  {
+    "english": "some",
+    "japanese": "いくつかの，いくらかの",
+    "lesson": "L03"
+  },
+  {
+    "english": "pen",
+    "japanese": "ペン",
+    "lesson": "L03"
+  },
+  {
+    "english": "any",
+    "japanese": "少しも《否定文で》，いくらかの《疑問文で》",
+    "lesson": "L03"
+  },
+  {
+    "english": "need",
+    "japanese": "～を必要とする",
+    "lesson": "L03"
+  },
+  {
+    "english": "dish",
+    "japanese": "皿",
+    "lesson": "L03"
+  },
+  {
+    "english": "evening",
+    "japanese": "夕方",
+    "lesson": "L03"
+  },
+  {
+    "english": "morning",
+    "japanese": "朝，午前",
+    "lesson": "L03"
+  },
+  {
+    "english": "afternoon",
+    "japanese": "午後",
+    "lesson": "L03"
+  },
+  {
+    "english": "photo",
+    "japanese": "写真",
+    "lesson": "L03"
+  },
+  {
+    "english": "of",
+    "japanese": "～の",
+    "lesson": "L03"
+  },
+  {
+    "english": "welcome",
+    "japanese": "歓迎",
+    "lesson": "L03"
+  },
+  {
+    "english": "today",
+    "japanese": "今日（は）",
+    "lesson": "L03"
+  },
+  {
+    "english": "these",
+    "japanese": "これらは〔が〕",
+    "lesson": "L03"
+  },
+  {
+    "english": "Susana",
+    "japanese": "スザーナ《女性名》",
+    "lesson": "L03"
+  },
+  {
+    "english": "they",
+    "japanese": "それらは〔が〕，彼（女）らは〔が〕",
+    "lesson": "L03"
+  },
+  {
+    "english": "Mexico",
+    "japanese": "メキシコ",
+    "lesson": "L03"
+  },
+  {
+    "english": "Spanish",
+    "japanese": "スペイン語",
+    "lesson": "L03"
+  },
+  {
+    "english": "home",
+    "japanese": "自宅，家，《動物の》生息地",
+    "lesson": "L03"
+  },
+  {
+    "english": "we",
+    "japanese": "私たちは〔が〕",
+    "lesson": "L03"
+  },
+  {
+    "english": "talk",
+    "japanese": "話す，話をする",
+    "lesson": "L03"
+  },
+  {
+    "english": "them",
+    "japanese": "彼（女）らを〔に〕，それらを〔に〕",
+    "lesson": "L03"
+  },
+  {
+    "english": "their",
+    "japanese": "彼（女）らの，それらの",
+    "lesson": "L03"
+  },
+  {
+    "english": "Mexican",
+    "japanese": "メキシコの",
+    "lesson": "L03"
+  },
+  {
+    "english": "dress",
+    "japanese": "服，ドレス",
+    "lesson": "L03"
+  },
+  {
+    "english": "color",
+    "japanese": "色",
+    "lesson": "L03"
+  },
+  {
+    "english": "design",
+    "japanese": "設計，デザイン",
+    "lesson": "L03"
+  },
+  {
+    "english": "baseball",
+    "japanese": "野球",
+    "lesson": "L03"
+  },
+  {
+    "english": "player",
+    "japanese": "選手，競技者",
+    "lesson": "L03"
+  },
+  {
+    "english": "John",
+    "japanese": "ジョン《男性名》",
+    "lesson": "L03"
+  },
+  {
+    "english": "Bob",
+    "japanese": "ボブ《男性名》",
+    "lesson": "L03"
+  },
+  {
+    "english": "teammate",
+    "japanese": "チームメイト，チームの仲間",
+    "lesson": "L03"
+  },
+  {
+    "english": "singer",
+    "japanese": "歌手，歌う人",
+    "lesson": "L03"
+  },
+  {
+    "english": "we're",
+    "japanese": "we are の短縮形",
+    "lesson": "L03"
+  },
+  {
+    "english": "they're",
+    "japanese": "they are の短縮形",
+    "lesson": "L03"
+  },
+  {
+    "english": "T-shirt",
+    "japanese": "Tシャツ",
+    "lesson": "L03"
+  },
+  {
+    "english": "those",
+    "japanese": "あれらの",
+    "lesson": "L03"
+  },
+  {
+    "english": "coat",
+    "japanese": "コート",
+    "lesson": "L03"
+  },
+  {
+    "english": "know",
+    "japanese": "～を知っている",
+    "lesson": "L03"
+  },
+  {
+    "english": "him",
+    "japanese": "彼を〔に〕",
+    "lesson": "L03"
+  },
+  {
+    "english": "us",
+    "japanese": "私たちを〔に〕",
+    "lesson": "L03"
+  },
+  {
+    "english": "our",
+    "japanese": "私たちの",
+    "lesson": "L03"
+  },
+  {
+    "english": "its",
+    "japanese": "それの，その《it の所有格》",
+    "lesson": "L03"
+  },
+  {
+    "english": "the US",
+    "japanese": "アメリカ合衆国《the United States の略》",
+    "lesson": "L03"
+  },
+  {
+    "english": "Japanese-American",
+    "japanese": "日系アメリカ人",
+    "lesson": "L03"
+  },
+  {
+    "english": "parent",
+    "japanese": "親《父または母，parentsで両親》",
+    "lesson": "L03"
+  },
+  {
+    "english": "work",
+    "japanese": "働く",
+    "lesson": "L03"
+  },
+  {
+    "english": "as",
+    "japanese": "～として",
+    "lesson": "L03"
+  },
+  {
+    "english": "restaurant",
+    "japanese": "レストラン，食堂",
+    "lesson": "L03"
+  },
+  {
+    "english": "roll",
+    "japanese": "巻いたもの",
+    "lesson": "L03"
+  },
+  {
+    "english": "seaweed",
+    "japanese": "海藻，のり",
+    "lesson": "L03"
+  },
+  {
+    "english": "up",
+    "japanese": "上へ〔に〕",
+    "lesson": "L03"
+  },
+  {
+    "english": "inside",
+    "japanese": "～の中に〔へ，で〕，～の内側に〔へ，で〕",
+    "lesson": "L03"
+  },
+  {
+    "english": "rice",
+    "japanese": "米，ごはん",
+    "lesson": "L03"
+  },
+  {
+    "english": "put",
+    "japanese": "～を置く，のせる",
+    "lesson": "L03"
+  },
+  {
+    "english": "cucumber",
+    "japanese": "キュウリ",
+    "lesson": "L03"
+  },
+  {
+    "english": "avocado",
+    "japanese": "アボカド",
+    "lesson": "L03"
+  },
+  {
+    "english": "crab",
+    "japanese": "カニ",
+    "lesson": "L03"
+  },
+  {
+    "english": "meat",
+    "japanese": "《食用の》肉",
+    "lesson": "L03"
+  },
+  {
+    "english": "interesting",
+    "japanese": "おもしろい，興味深い",
+    "lesson": "L03"
+  },
+  {
+    "english": "serve",
+    "japanese": "（食べ物）を出す",
+    "lesson": "L03"
+  },
+  {
+    "english": "hero",
+    "japanese": "英雄",
+    "lesson": "L03"
+  },
+  {
+    "english": "boss",
+    "japanese": "上司",
+    "lesson": "L03"
+  },
+  {
+    "english": "famous",
+    "japanese": "有名な",
+    "lesson": "L03"
+  },
+  {
+    "english": "dear",
+    "japanese": "《手紙の書き出しで》親愛なる～",
+    "lesson": "L03"
+  },
+  {
+    "english": "interview",
+    "japanese": "面接，インタビュー",
+    "lesson": "L03"
+  },
+  {
+    "english": "healthy",
+    "japanese": "健康によい",
+    "lesson": "L03"
+  },
+  {
+    "english": "another",
+    "japanese": "もう1つの，別の",
+    "lesson": "L03"
+  },
+  {
+    "english": "California",
+    "japanese": "カリフォルニア州《地名》",
+    "lesson": "L03"
+  },
+  {
+    "english": "best",
+    "japanese": "最もよい，最上の《good の最上級》",
+    "lesson": "L03"
+  },
+  {
+    "english": "regard",
+    "japanese": "よろしくというあいさつ",
+    "lesson": "L03"
+  },
+  {
+    "english": "club",
+    "japanese": "クラブ",
+    "lesson": "L03"
+  },
+  {
+    "english": "badminton",
+    "japanese": "バドミントン",
+    "lesson": "L03"
+  },
+  {
+    "english": "volleyball",
+    "japanese": "バレーボール",
+    "lesson": "L03"
+  },
+  {
+    "english": "table tennis",
+    "japanese": "卓球",
+    "lesson": "L03"
+  },
+  {
+    "english": "track and field",
+    "japanese": "陸上競技",
+    "lesson": "L03"
+  },
+  {
+    "english": "music",
+    "japanese": "音楽",
+    "lesson": "L03"
+  },
+  {
+    "english": "art",
+    "japanese": "美術，芸術",
+    "lesson": "L03"
+  },
+  {
+    "english": "social studies",
+    "japanese": "社会《教科名》",
+    "lesson": "L03"
+  },
+  {
+    "english": "get",
+    "japanese": "～を得る，習得する，到達する",
+    "lesson": "L04"
+  },
+  {
+    "english": "supermarket",
+    "japanese": "スーパーマーケット",
+    "lesson": "L04"
+  },
+  {
+    "english": "off",
+    "japanese": "《バス・電車など》～から降りて",
+    "lesson": "L04"
+  },
+  {
+    "english": "active",
+    "japanese": "活動的な，活発な",
+    "lesson": "L04"
+  },
+  {
+    "english": "sport",
+    "japanese": "スポーツ",
+    "lesson": "L04"
+  },
+  {
+    "english": "live",
+    "japanese": "住む，住んでいる",
+    "lesson": "L04"
+  },
+  {
+    "english": "miss",
+    "japanese": "～がいなくてさびしい",
+    "lesson": "L04"
+  },
+  {
+    "english": "cooking",
+    "japanese": "料理（すること）",
+    "lesson": "L04"
+  },
+  {
+    "english": "taco",
+    "japanese": "タコス",
+    "lesson": "L04"
+  },
+  {
+    "english": "go",
+    "japanese": "行く",
+    "lesson": "L04"
+  },
+  {
+    "english": "library",
+    "japanese": "図書館，図書室",
+    "lesson": "L04"
+  },
+  {
+    "english": "program",
+    "japanese": "番組，プログラム",
+    "lesson": "L04"
+  },
+  {
+    "english": "learn",
+    "japanese": "～を覚える，～を学ぶ，～を身につける",
+    "lesson": "L04"
+  },
+  {
+    "english": "word",
+    "japanese": "語，単語，言葉",
+    "lesson": "L04"
+  },
+  {
+    "english": "pass",
+    "japanese": "通り過ぎる，合格する",
+    "lesson": "L04"
+  },
+  {
+    "english": "wash",
+    "japanese": "～を洗う",
+    "lesson": "L04"
+  },
+  {
+    "english": "teach",
+    "japanese": "～を教える",
+    "lesson": "L04"
+  },
+  {
+    "english": "cry",
+    "japanese": "泣く",
+    "lesson": "L04"
+  },
+  {
+    "english": "try",
+    "japanese": "～を試す，やってみる",
+    "lesson": "L04"
+  },
+  {
+    "english": "fly",
+    "japanese": "飛ぶ",
+    "lesson": "L04"
+  },
+  {
+    "english": "has",
+    "japanese": "have の3人称単数現在形",
+    "lesson": "L04"
+  },
+  {
+    "english": "look",
+    "japanese": "見る",
+    "lesson": "L04"
+  },
+  {
+    "english": "video",
+    "japanese": "ビデオ，動画，映像",
+    "lesson": "L04"
+  },
+  {
+    "english": "does",
+    "japanese": "do の3人称単数現在形《疑問文や否定文に用いられる》",
+    "lesson": "L04"
+  },
+  {
+    "english": "often",
+    "japanese": "しばしば，よく",
+    "lesson": "L04"
+  },
+  {
+    "english": "send",
+    "japanese": "～を送る",
+    "lesson": "L04"
+  },
+  {
+    "english": "doesn't",
+    "japanese": "does not の短縮形",
+    "lesson": "L04"
+  },
+  {
+    "english": "take",
+    "japanese": "（写真）を撮る",
+    "lesson": "L04"
+  },
+  {
+    "english": "sometimes",
+    "japanese": "時々",
+    "lesson": "L04"
+  },
+  {
+    "english": "make",
+    "japanese": "～をする",
+    "lesson": "L04"
+  },
+  {
+    "english": "video call",
+    "japanese": "テレビ電話",
+    "lesson": "L04"
+  },
+  {
+    "english": "listen",
+    "japanese": "聞く",
+    "lesson": "L04"
+  },
+  {
+    "english": "video game",
+    "japanese": "テレビゲーム",
+    "lesson": "L04"
+  },
+  {
+    "english": "cook",
+    "japanese": "～を料理する",
+    "lesson": "L04"
+  },
+  {
+    "english": "Chinese",
+    "japanese": "中国の，中国人〔語〕の",
+    "lesson": "L04"
+  },
+  {
+    "english": "recipe",
+    "japanese": "レシピ，調理法",
+    "lesson": "L04"
+  },
+  {
+    "english": "always",
+    "japanese": "いつも",
+    "lesson": "L04"
+  },
+  {
+    "english": "drink",
+    "japanese": "～を飲む",
+    "lesson": "L04"
+  },
+  {
+    "english": "breakfast",
+    "japanese": "朝食",
+    "lesson": "L04"
+  },
+  {
+    "english": "usually",
+    "japanese": "たいてい",
+    "lesson": "L04"
+  },
+  {
+    "english": "by",
+    "japanese": "《交通手段について》～で，～を使って",
+    "lesson": "L04"
+  },
+  {
+    "english": "never",
+    "japanese": "決して…ない",
+    "lesson": "L04"
+  },
+  {
+    "english": "eat",
+    "japanese": "～を食べる",
+    "lesson": "L04"
+  },
+  {
+    "english": "Sam",
+    "japanese": "サム《男性名》",
+    "lesson": "L04"
+  },
+  {
+    "english": "when",
+    "japanese": "いつ",
+    "lesson": "L04"
+  },
+  {
+    "english": "Hayward",
+    "japanese": "ヘイワード《地名》",
+    "lesson": "L04"
+  },
+  {
+    "english": "where",
+    "japanese": "どこで〔に，へ〕",
+    "lesson": "L04"
+  },
+  {
+    "english": "near",
+    "japanese": "～の近くに〔で〕",
+    "lesson": "L04"
+  },
+  {
+    "english": "together",
+    "japanese": "一緒に",
+    "lesson": "L04"
+  },
+  {
+    "english": "room",
+    "japanese": "部屋",
+    "lesson": "L04"
+  },
+  {
+    "english": "floor",
+    "japanese": "（建物の）階",
+    "lesson": "L04"
+  },
+  {
+    "english": "table",
+    "japanese": "テーブル",
+    "lesson": "L04"
+  },
+  {
+    "english": "wall",
+    "japanese": "壁",
+    "lesson": "L04"
+  },
+  {
+    "english": "kitchen",
+    "japanese": "台所",
+    "lesson": "L04"
+  },
+  {
+    "english": "Asia",
+    "japanese": "アジア《地域名》",
+    "lesson": "L04"
+  },
+  {
+    "english": "under",
+    "japanese": "～の下に",
+    "lesson": "L04"
+  },
+  {
+    "english": "sea",
+    "japanese": "海",
+    "lesson": "L04"
+  },
+  {
+    "english": "festival",
+    "japanese": "祭り",
+    "lesson": "L04"
+  },
+  {
+    "english": "vacation",
+    "japanese": "休み，休暇",
+    "lesson": "L04"
+  },
+  {
+    "english": "end",
+    "japanese": "終わる",
+    "lesson": "L04"
+  },
+  {
+    "english": "noon",
+    "japanese": "正午，お昼",
+    "lesson": "L04"
+  },
+  {
+    "english": "night",
+    "japanese": "夜",
+    "lesson": "L04"
+  },
+  {
+    "english": "Christmas",
+    "japanese": "クリスマス",
+    "lesson": "L04"
+  },
+  {
+    "english": "before",
+    "japanese": "～の前に",
+    "lesson": "L04"
+  },
+  {
+    "english": "dinner",
+    "japanese": "夕食",
+    "lesson": "L04"
+  },
+  {
+    "english": "Ann",
+    "japanese": "アン《女性名》",
+    "lesson": "L04"
+  },
+  {
+    "english": "Smithsonian",
+    "japanese": "スミソニアン協会の",
+    "lesson": "L04"
+  },
+  {
+    "english": "national",
+    "japanese": "国立の",
+    "lesson": "L04"
+  },
+  {
+    "english": "animal",
+    "japanese": "動物",
+    "lesson": "L04"
+  },
+  {
+    "english": "elephant",
+    "japanese": "ゾウ",
+    "lesson": "L04"
+  },
+  {
+    "english": "area",
+    "japanese": "地域，エリア",
+    "lesson": "L04"
+  },
+  {
+    "english": "baby",
+    "japanese": "赤ちゃん",
+    "lesson": "L04"
+  },
+  {
+    "english": "walk",
+    "japanese": "歩く",
+    "lesson": "L04"
+  },
+  {
+    "english": "slowly",
+    "japanese": "ゆっくりと",
+    "lesson": "L04"
+  },
+  {
+    "english": "cute",
+    "japanese": "かわいい",
+    "lesson": "L04"
+  },
+  {
+    "english": "bath",
+    "japanese": "水浴，入浴",
+    "lesson": "L04"
+  },
+  {
+    "english": "bathe",
+    "japanese": "入浴する",
+    "lesson": "L04"
+  },
+  {
+    "english": "lovely",
+    "japanese": "愛らしい，かわいらしい，すてきな",
+    "lesson": "L04"
+  },
+  {
+    "english": "come",
+    "japanese": "来る",
+    "lesson": "L04"
+  },
+  {
+    "english": "bamboo",
+    "japanese": "竹",
+    "lesson": "L04"
+  },
+  {
+    "english": "show",
+    "japanese": "～を示す，～を見せる",
+    "lesson": "L04"
+  },
+  {
+    "english": "leopard",
+    "japanese": "ヒョウ",
+    "lesson": "L04"
+  },
+  {
+    "english": "run",
+    "japanese": "走る",
+    "lesson": "L04"
+  },
+  {
+    "english": "fast",
+    "japanese": "速く",
+    "lesson": "L04"
+  },
+  {
+    "english": "marking",
+    "japanese": "模様，斑点",
+    "lesson": "L04"
+  },
+  {
+    "english": "also",
+    "japanese": "…もまた",
+    "lesson": "L04"
+  },
+  {
+    "english": "tail",
+    "japanese": "尾，しっぽ",
+    "lesson": "L04"
+  },
+  {
+    "english": "spend",
+    "japanese": "《時間など》～を過ごす",
+    "lesson": "L04"
+  },
+  {
+    "english": "exciting",
+    "japanese": "興奮させる，わくわくさせる",
+    "lesson": "L04"
+  },
+  {
+    "english": "shower",
+    "japanese": "シャワー，シャワー装置，シャワー室",
+    "lesson": "L04"
+  },
+  {
+    "english": "pet",
+    "japanese": "ペット",
+    "lesson": "L04"
+  },
+  {
+    "english": "hamster",
+    "japanese": "ハムスター",
+    "lesson": "L04"
+  },
+  {
+    "english": "bird",
+    "japanese": "鳥",
+    "lesson": "L04"
+  },
+  {
+    "english": "headache",
+    "japanese": "頭痛",
+    "lesson": "L05"
+  },
+  {
+    "english": "racket",
+    "japanese": "ラケット",
+    "lesson": "L05"
+  },
+  {
+    "english": "bench",
+    "japanese": "ベンチ",
+    "lesson": "L05"
+  },
+  {
+    "english": "mine",
+    "japanese": "私のもの",
+    "lesson": "L05"
+  },
+  {
+    "english": "whose",
+    "japanese": "誰の，誰のもの",
+    "lesson": "L05"
+  },
+  {
+    "english": "maybe",
+    "japanese": "おそらく，たぶん",
+    "lesson": "L05"
+  },
+  {
+    "english": "case",
+    "japanese": "箱，容器，…入れ",
+    "lesson": "L05"
+  },
+  {
+    "english": "ruler",
+    "japanese": "定規",
+    "lesson": "L05"
+  },
+  {
+    "english": "yours",
+    "japanese": "あなた（たち）のもの",
+    "lesson": "L05"
+  },
+  {
+    "english": "stapler",
+    "japanese": "ホッチキス",
+    "lesson": "L05"
+  },
+  {
+    "english": "ours",
+    "japanese": "私たちのもの",
+    "lesson": "L05"
+  },
+  {
+    "english": "hers",
+    "japanese": "彼女のもの",
+    "lesson": "L05"
+  },
+  {
+    "english": "theirs",
+    "japanese": "彼（女）らのもの",
+    "lesson": "L05"
+  },
+  {
+    "english": "hat",
+    "japanese": "《縁のある》帽子",
+    "lesson": "L05"
+  },
+  {
+    "english": "children",
+    "japanese": "child の複数形",
+    "lesson": "L05"
+  },
+  {
+    "english": "child",
+    "japanese": "子供",
+    "lesson": "L05"
+  },
+  {
+    "english": "help",
+    "japanese": "何かお探しですか？",
+    "lesson": "L05"
+  },
+  {
+    "english": "jogging suit",
+    "japanese": "トレーニング用のジャージ",
+    "lesson": "L05"
+  },
+  {
+    "english": "dollar",
+    "japanese": "ドル《通貨単位》",
+    "lesson": "L05"
+  },
+  {
+    "english": "size",
+    "japanese": "大きさ",
+    "lesson": "L05"
+  },
+  {
+    "english": "centimeter",
+    "japanese": "センチメートル",
+    "lesson": "L05"
+  },
+  {
+    "english": "feet",
+    "japanese": "フィート《長さの単位》（foot の複数形）",
+    "lesson": "L05"
+  },
+  {
+    "english": "inch",
+    "japanese": "インチ《長さの単位》",
+    "lesson": "L05"
+  },
+  {
+    "english": "fine",
+    "japanese": "申し分のない，十分な",
+    "lesson": "L05"
+  },
+  {
+    "english": "just",
+    "japanese": "ただ，単に",
+    "lesson": "L05"
+  },
+  {
+    "english": "I'd",
+    "japanese": "I would の短縮形",
+    "lesson": "L05"
+  },
+  {
+    "english": "Mt.",
+    "japanese": "～山《mount の略》",
+    "lesson": "L05"
+  },
+  {
+    "english": "meter",
+    "japanese": "メートル",
+    "lesson": "L05"
+  },
+  {
+    "english": "river",
+    "japanese": "川",
+    "lesson": "L05"
+  },
+  {
+    "english": "kilometer",
+    "japanese": "キロメートル",
+    "lesson": "L05"
+  },
+  {
+    "english": "deep",
+    "japanese": "深い，深さが～の",
+    "lesson": "L05"
+  },
+  {
+    "english": "lake",
+    "japanese": "湖",
+    "lesson": "L05"
+  },
+  {
+    "english": "ticket",
+    "japanese": "乗車券，チケット",
+    "lesson": "L05"
+  },
+  {
+    "english": "yard",
+    "japanese": "ヤード《長さの単位》",
+    "lesson": "L05"
+  },
+  {
+    "english": "mile",
+    "japanese": "マイル《長さの単位》",
+    "lesson": "L05"
+  },
+  {
+    "english": "yen",
+    "japanese": "円《通貨単位》",
+    "lesson": "L05"
+  },
+  {
+    "english": "point",
+    "japanese": "点，小数点",
+    "lesson": "L05"
+  },
+  {
+    "english": "which",
+    "japanese": "どちら，どれ",
+    "lesson": "L05"
+  },
+  {
+    "english": "pants",
+    "japanese": "《複数形pantsで》ズボン",
+    "lesson": "L05"
+  },
+  {
+    "english": "shorts",
+    "japanese": "《複数形shortsで》半ズボン",
+    "lesson": "L05"
+  },
+  {
+    "english": "sale",
+    "japanese": "販売",
+    "lesson": "L05"
+  },
+  {
+    "english": "percent",
+    "japanese": "パーセント",
+    "lesson": "L05"
+  },
+  {
+    "english": "wow",
+    "japanese": "うわあ，まあ",
+    "lesson": "L05"
+  },
+  {
+    "english": "deal",
+    "japanese": "取引",
+    "lesson": "L05"
+  },
+  {
+    "english": "different",
+    "japanese": "違う，異なる，《複数名詞の前で》いろいろな",
+    "lesson": "L05"
+  },
+  {
+    "english": "captain",
+    "japanese": "キャプテン，主将",
+    "lesson": "L05"
+  },
+  {
+    "english": "team",
+    "japanese": "チーム",
+    "lesson": "L05"
+  },
+  {
+    "english": "cup",
+    "japanese": "カップ，茶わん",
+    "lesson": "L05"
+  },
+  {
+    "english": "iced tea",
+    "japanese": "アイスティー",
+    "lesson": "L05"
+  },
+  {
+    "english": "subject",
+    "japanese": "科目，教科",
+    "lesson": "L05"
+  },
+  {
+    "english": "Bali",
+    "japanese": "バリ《地名》",
+    "lesson": "L05"
+  },
+  {
+    "english": "island",
+    "japanese": "島",
+    "lesson": "L05"
+  },
+  {
+    "english": "Indonesia",
+    "japanese": "インドネシア",
+    "lesson": "L05"
+  },
+  {
+    "english": "mountain",
+    "japanese": "山",
+    "lesson": "L05"
+  },
+  {
+    "english": "beach",
+    "japanese": "浜辺，ビーチ",
+    "lesson": "L05"
+  },
+  {
+    "english": "god",
+    "japanese": "神",
+    "lesson": "L05"
+  },
+  {
+    "english": "most",
+    "japanese": "ほとんどの",
+    "lesson": "L05"
+  },
+  {
+    "english": "people",
+    "japanese": "人々",
+    "lesson": "L05"
+  },
+  {
+    "english": "Bali-Hindu",
+    "japanese": "バリ・ヒンドゥー教徒",
+    "lesson": "L05"
+  },
+  {
+    "english": "custom",
+    "japanese": "習慣，風習",
+    "lesson": "L05"
+  },
+  {
+    "english": "touch",
+    "japanese": "～に触る",
+    "lesson": "L05"
+  },
+  {
+    "english": "other",
+    "japanese": "《othersで》他人",
+    "lesson": "L05"
+  },
+  {
+    "english": "left",
+    "japanese": "左の",
+    "lesson": "L05"
+  },
+  {
+    "english": "life",
+    "japanese": "生活",
+    "lesson": "L05"
+  },
+  {
+    "english": "Hindu",
+    "japanese": "ヒンドゥー教徒",
+    "lesson": "L05"
+  },
+  {
+    "english": "visit",
+    "japanese": "～を訪問する",
+    "lesson": "L05"
+  },
+  {
+    "english": "someday",
+    "japanese": "（未来の）いつか",
+    "lesson": "L05"
+  },
+  {
+    "english": "Brian",
+    "japanese": "ブライアン《男性名》",
+    "lesson": "L05"
+  },
+  {
+    "english": "Batur",
+    "japanese": "バトゥール",
+    "lesson": "L05"
+  },
+  {
+    "english": "place",
+    "japanese": "場所，所",
+    "lesson": "L05"
+  },
+  {
+    "english": "religious",
+    "japanese": "宗教の，宗教に関係する",
+    "lesson": "L05"
+  },
+  {
+    "english": "dance",
+    "japanese": "踊り",
+    "lesson": "L05"
+  },
+  {
+    "english": "like",
+    "japanese": "～のような",
+    "lesson": "L05"
+  },
+  {
+    "english": "ketjak",
+    "japanese": "ケチャ",
+    "lesson": "L05"
+  },
+  {
+    "english": "barong",
+    "japanese": "バロン",
+    "lesson": "L05"
+  },
+  {
+    "english": "story",
+    "japanese": "話，物語",
+    "lesson": "L05"
+  },
+  {
+    "english": "battle",
+    "japanese": "戦い，戦闘",
+    "lesson": "L05"
+  },
+  {
+    "english": "between",
+    "japanese": "～の間に〔で〕",
+    "lesson": "L05"
+  },
+  {
+    "english": "witch",
+    "japanese": "魔女",
+    "lesson": "L05"
+  },
+  {
+    "english": "Bali-Hinduism",
+    "japanese": "バリ・ヒンドゥー教",
+    "lesson": "L05"
+  },
+  {
+    "english": "cap",
+    "japanese": "（縁のない)帽子",
+    "lesson": "L05"
+  },
+  {
+    "english": "change",
+    "japanese": "つり銭，おつり",
+    "lesson": "L05"
+  },
+  {
+    "english": "cent",
+    "japanese": "セント《通貨単位》",
+    "lesson": "L05"
+  },
+  {
+    "english": "shirt",
+    "japanese": "シャツ",
+    "lesson": "L05"
+  },
+  {
+    "english": "jean",
+    "japanese": "《jeansで》ジーンズ，ジーパン",
+    "lesson": "L05"
+  },
+  {
+    "english": "skirt",
+    "japanese": "スカート",
+    "lesson": "L05"
+  },
+  {
+    "english": "sock",
+    "japanese": "靴下《複数形socksで1足の靴下》",
+    "lesson": "L05"
+  },
+  {
+    "english": "shoe",
+    "japanese": "靴《ふつうはshoesで1足の靴》",
+    "lesson": "L05"
+  },
+  {
+    "english": "shopping",
+    "japanese": "買物（をすること）",
+    "lesson": "L06"
+  },
+  {
+    "english": "mall",
+    "japanese": "ショッピングセンター，商店街",
+    "lesson": "L06"
+  },
+  {
+    "english": "Lombard",
+    "japanese": "ロンバード",
+    "lesson": "L06"
+  },
+  {
+    "english": "street",
+    "japanese": "通り",
+    "lesson": "L06"
+  },
+  {
+    "english": "straight",
+    "japanese": "まっすぐに",
+    "lesson": "L06"
+  },
+  {
+    "english": "along",
+    "japanese": "～に沿って",
+    "lesson": "L06"
+  },
+  {
+    "english": "block",
+    "japanese": "1区画《周りを道路に囲まれている》",
+    "lesson": "L06"
+  },
+  {
+    "english": "turn",
+    "japanese": "曲がる",
+    "lesson": "L06"
+  },
+  {
+    "english": "corner",
+    "japanese": "角，曲がり角",
+    "lesson": "L06"
+  },
+  {
+    "english": "problem",
+    "japanese": "問題",
+    "lesson": "L06"
+  },
+  {
+    "english": "open",
+    "japanese": "～を開く",
+    "lesson": "L06"
+  },
+  {
+    "english": "use",
+    "japanese": "～を使う",
+    "lesson": "L06"
+  },
+  {
+    "english": "towel",
+    "japanese": "タオル",
+    "lesson": "L06"
+  },
+  {
+    "english": "plate",
+    "japanese": "皿《浅い平皿》",
+    "lesson": "L06"
+  },
+  {
+    "english": "seat",
+    "japanese": "席，座席",
+    "lesson": "L06"
+  },
+  {
+    "english": "again",
+    "japanese": "もう1度，再び",
+    "lesson": "L06"
+  },
+  {
+    "english": "sure",
+    "japanese": "《Sure.で》もちろん，いいですとも",
+    "lesson": "L06"
+  },
+  {
+    "english": "all",
+    "japanese": "まったく，すっかり",
+    "lesson": "L06"
+  },
+  {
+    "english": "sorry",
+    "japanese": "すまなく思って",
+    "lesson": "L06"
+  },
+  {
+    "english": "museum",
+    "japanese": "博物館，美術館",
+    "lesson": "L06"
+  },
+  {
+    "english": "ready",
+    "japanese": "用意ができた",
+    "lesson": "L06"
+  },
+  {
+    "english": "order",
+    "japanese": "（～を）注文する",
+    "lesson": "L06"
+  },
+  {
+    "english": "roast",
+    "japanese": "ロースト",
+    "lesson": "L06"
+  },
+  {
+    "english": "beef",
+    "japanese": "牛肉",
+    "lesson": "L06"
+  },
+  {
+    "english": "cream",
+    "japanese": "クリーム",
+    "lesson": "L06"
+  },
+  {
+    "english": "pasta",
+    "japanese": "パスタ，スパゲッティ",
+    "lesson": "L06"
+  },
+  {
+    "english": "would",
+    "japanese": "→ like",
+    "lesson": "L06"
+  },
+  {
+    "english": "can't",
+    "japanese": "cannot の短縮形",
+    "lesson": "L06"
+  },
+  {
+    "english": "read",
+    "japanese": "～を読む",
+    "lesson": "L06"
+  },
+  {
+    "english": "Italian",
+    "japanese": "イタリア語，イタリア人",
+    "lesson": "L06"
+  },
+  {
+    "english": "can",
+    "japanese": "…できる",
+    "lesson": "L06"
+  },
+  {
+    "english": "cioccolata",
+    "japanese": "飲むチョコレート",
+    "lesson": "L06"
+  },
+  {
+    "english": "love",
+    "japanese": "～を愛する，～が大好きである",
+    "lesson": "L06"
+  },
+  {
+    "english": "chocolate",
+    "japanese": "チョコレート",
+    "lesson": "L06"
+  },
+  {
+    "english": "write",
+    "japanese": "～を書く",
+    "lesson": "L06"
+  },
+  {
+    "english": "song",
+    "japanese": "歌",
+    "lesson": "L06"
+  },
+  {
+    "english": "sing",
+    "japanese": "歌う，～を歌う",
+    "lesson": "L06"
+  },
+  {
+    "english": "band",
+    "japanese": "バンド，楽団",
+    "lesson": "L06"
+  },
+  {
+    "english": "swim",
+    "japanese": "泳ぐ",
+    "lesson": "L06"
+  },
+  {
+    "english": "cannot",
+    "japanese": "can の否定形",
+    "lesson": "L06"
+  },
+  {
+    "english": "pool",
+    "japanese": "プール",
+    "lesson": "L06"
+  },
+  {
+    "english": "bread",
+    "japanese": "パン",
+    "lesson": "L06"
+  },
+  {
+    "english": "salad",
+    "japanese": "サラダ",
+    "lesson": "L06"
+  },
+  {
+    "english": "weekend",
+    "japanese": "週末",
+    "lesson": "L06"
+  },
+  {
+    "english": "be",
+    "japanese": "am, are, is の原形",
+    "lesson": "L06"
+  },
+  {
+    "english": "careful",
+    "japanese": "注意深い，慎重な",
+    "lesson": "L06"
+  },
+  {
+    "english": "olive",
+    "japanese": "オリーブ",
+    "lesson": "L06"
+  },
+  {
+    "english": "oil",
+    "japanese": "油，オイル",
+    "lesson": "L06"
+  },
+  {
+    "english": "finish",
+    "japanese": "～を食べ終える",
+    "lesson": "L06"
+  },
+  {
+    "english": "worry",
+    "japanese": "心配する",
+    "lesson": "L06"
+  },
+  {
+    "english": "bring",
+    "japanese": "～を持ってくる",
+    "lesson": "L06"
+  },
+  {
+    "english": "later",
+    "japanese": "あとで，のちに",
+    "lesson": "L06"
+  },
+  {
+    "english": "ski",
+    "japanese": "スキーをする",
+    "lesson": "L06"
+  },
+  {
+    "english": "skate",
+    "japanese": "スケートをする",
+    "lesson": "L06"
+  },
+  {
+    "english": "post office",
+    "japanese": "郵便局",
+    "lesson": "L06"
+  },
+  {
+    "english": "Rob",
+    "japanese": "ロブ《男性名》",
+    "lesson": "L06"
+  },
+  {
+    "english": "everybody",
+    "japanese": "みんな，誰でも",
+    "lesson": "L06"
+  },
+  {
+    "english": "noisy",
+    "japanese": "騒々しい，うるさい",
+    "lesson": "L06"
+  },
+  {
+    "english": "late",
+    "japanese": "遅れた，遅い",
+    "lesson": "L06"
+  },
+  {
+    "english": "meeting",
+    "japanese": "ミーティング，会議",
+    "lesson": "L06"
+  },
+  {
+    "english": "interviewer",
+    "japanese": "面接官",
+    "lesson": "L06"
+  },
+  {
+    "english": "international",
+    "japanese": "国際的な",
+    "lesson": "L06"
+  },
+  {
+    "english": "central",
+    "japanese": "中央の，中心の",
+    "lesson": "L06"
+  },
+  {
+    "english": "junior high school",
+    "japanese": "中学校",
+    "lesson": "L06"
+  },
+  {
+    "english": "clean",
+    "japanese": "～を掃除する",
+    "lesson": "L06"
+  },
+  {
+    "english": "babysit",
+    "japanese": "子守りをする",
+    "lesson": "L06"
+  },
+  {
+    "english": "else",
+    "japanese": "他に",
+    "lesson": "L06"
+  },
+  {
+    "english": "pick",
+    "japanese": "～をつかむ，～をつかみ取る",
+    "lesson": "L06"
+  },
+  {
+    "english": "litter",
+    "japanese": "ごみ",
+    "lesson": "L06"
+  },
+  {
+    "english": "musical",
+    "japanese": "音楽の",
+    "lesson": "L06"
+  },
+  {
+    "english": "instrument",
+    "japanese": "《musical instrument で》楽器",
+    "lesson": "L06"
+  },
+  {
+    "english": "member",
+    "japanese": "一員，構成員",
+    "lesson": "L06"
+  },
+  {
+    "english": "orchestra",
+    "japanese": "オーケストラ",
+    "lesson": "L06"
+  },
+  {
+    "english": "nursing home",
+    "japanese": "老人ホーム",
+    "lesson": "L06"
+  },
+  {
+    "english": "director",
+    "japanese": "管理者，施設長",
+    "lesson": "L06"
+  },
+  {
+    "english": "White",
+    "japanese": "ホワイト《姓》",
+    "lesson": "L06"
+  },
+  {
+    "english": "entrance",
+    "japanese": "入り口",
+    "lesson": "L06"
+  },
+  {
+    "english": "a.m.",
+    "japanese": "午前～時《時刻の後ろにつけて》",
+    "lesson": "L06"
+  },
+  {
+    "english": "elderly",
+    "japanese": "年配の",
+    "lesson": "L06"
+  },
+  {
+    "english": "sit",
+    "japanese": "座る",
+    "lesson": "L06"
+  },
+  {
+    "english": "Margaret",
+    "japanese": "マーガレット《女性名》",
+    "lesson": "L06"
+  },
+  {
+    "english": "Gibson",
+    "japanese": "ギブスン《姓》",
+    "lesson": "L06"
+  },
+  {
+    "english": "department store",
+    "japanese": "デパート",
+    "lesson": "L06"
+  },
+  {
+    "english": "city",
+    "japanese": "都市，市",
+    "lesson": "L06"
+  },
+  {
+    "english": "bank",
+    "japanese": "銀行",
+    "lesson": "L06"
+  },
+  {
+    "english": "hospital",
+    "japanese": "病院",
+    "lesson": "L06"
+  },
+  {
+    "english": "note",
+    "japanese": "メモ，覚え書き",
+    "lesson": "L07"
+  },
+  {
+    "english": "medicine",
+    "japanese": "薬",
+    "lesson": "L07"
+  },
+  {
+    "english": "join",
+    "japanese": "～に参加する",
+    "lesson": "L07"
+  },
+  {
+    "english": "court",
+    "japanese": "（テニスなどの）コート",
+    "lesson": "L07"
+  },
+  {
+    "english": "soon",
+    "japanese": "もうすぐ，まもなく",
+    "lesson": "L07"
+  },
+  {
+    "english": "hold",
+    "japanese": "つかむ",
+    "lesson": "L07"
+  },
+  {
+    "english": "out",
+    "japanese": "外に，外出して",
+    "lesson": "L07"
+  },
+  {
+    "english": "message",
+    "japanese": "伝言，メッセージ",
+    "lesson": "L07"
+  },
+  {
+    "english": "sleep",
+    "japanese": "眠る",
+    "lesson": "L07"
+  },
+  {
+    "english": "living room",
+    "japanese": "居間",
+    "lesson": "L07"
+  },
+  {
+    "english": "cake",
+    "japanese": "ケーキ",
+    "lesson": "L07"
+  },
+  {
+    "english": "lie",
+    "japanese": "横になる",
+    "lesson": "L07"
+  },
+  {
+    "english": "sofa",
+    "japanese": "ソファー",
+    "lesson": "L07"
+  },
+  {
+    "english": "laugh",
+    "japanese": "笑う",
+    "lesson": "L07"
+  },
+  {
+    "english": "give",
+    "japanese": "～を与える",
+    "lesson": "L07"
+  },
+  {
+    "english": "cut",
+    "japanese": "～を切る",
+    "lesson": "L07"
+  },
+  {
+    "english": "die",
+    "japanese": "死ぬ",
+    "lesson": "L07"
+  },
+  {
+    "english": "break",
+    "japanese": "《短い》休憩",
+    "lesson": "L07"
+  },
+  {
+    "english": "wait",
+    "japanese": "待つ",
+    "lesson": "L07"
+  },
+  {
+    "english": "buy",
+    "japanese": "～を買う",
+    "lesson": "L07"
+  },
+  {
+    "english": "cold",
+    "japanese": "寒い，冷たい",
+    "lesson": "L07"
+  },
+  {
+    "english": "snack",
+    "japanese": "軽食，スナック，間食",
+    "lesson": "L07"
+  },
+  {
+    "english": "store",
+    "japanese": "店",
+    "lesson": "L07"
+  },
+  {
+    "english": "then",
+    "japanese": "それでは",
+    "lesson": "L07"
+  },
+  {
+    "english": "online",
+    "japanese": "オンラインで",
+    "lesson": "L07"
+  },
+  {
+    "english": "tablet",
+    "japanese": "《IT》タブレット（PC）",
+    "lesson": "L07"
+  },
+  {
+    "english": "Jane",
+    "japanese": "ジェーン《女性名》",
+    "lesson": "L07"
+  },
+  {
+    "english": "homework",
+    "japanese": "宿題",
+    "lesson": "L07"
+  },
+  {
+    "english": "smell",
+    "japanese": "～のにおいがする",
+    "lesson": "L07"
+  },
+  {
+    "english": "outside",
+    "japanese": "外で〔に〕",
+    "lesson": "L07"
+  },
+  {
+    "english": "loudly",
+    "japanese": "大声で，騒々しく",
+    "lesson": "L07"
+  },
+  {
+    "english": "weather",
+    "japanese": "天気，天候",
+    "lesson": "L07"
+  },
+  {
+    "english": "yeah",
+    "japanese": "＝yes",
+    "lesson": "L07"
+  },
+  {
+    "english": "barley tea",
+    "japanese": "麦茶",
+    "lesson": "L07"
+  },
+  {
+    "english": "rule",
+    "japanese": "規則，ルール",
+    "lesson": "L07"
+  },
+  {
+    "english": "belong",
+    "japanese": "属する",
+    "lesson": "L07"
+  },
+  {
+    "english": "idea",
+    "japanese": "思いつき，アイデア",
+    "lesson": "L07"
+  },
+  {
+    "english": "wrong",
+    "japanese": "間違った，誤った",
+    "lesson": "L07"
+  },
+  {
+    "english": "number",
+    "japanese": "番号，電話番号",
+    "lesson": "L07"
+  },
+  {
+    "english": "report",
+    "japanese": "レポート，報告書",
+    "lesson": "L07"
+  },
+  {
+    "english": "Burt",
+    "japanese": "バート《男性名》",
+    "lesson": "L07"
+  },
+  {
+    "english": "clown",
+    "japanese": "道化，ピエロ",
+    "lesson": "L07"
+  },
+  {
+    "english": "circus",
+    "japanese": "サーカス",
+    "lesson": "L07"
+  },
+  {
+    "english": "volunteer",
+    "japanese": "ボランティア",
+    "lesson": "L07"
+  },
+  {
+    "english": "difference",
+    "japanese": "違い，相違点",
+    "lesson": "L07"
+  },
+  {
+    "english": "fun",
+    "japanese": "楽しみ，楽しいこと",
+    "lesson": "L07"
+  },
+  {
+    "english": "sick",
+    "japanese": "病気の",
+    "lesson": "L07"
+  },
+  {
+    "english": "away",
+    "japanese": "離れて",
+    "lesson": "L07"
+  },
+  {
+    "english": "lonely",
+    "japanese": "さびしい",
+    "lesson": "L07"
+  },
+  {
+    "english": "around",
+    "japanese": "～の周りを，～のあちこちを",
+    "lesson": "L07"
+  },
+  {
+    "english": "world",
+    "japanese": "世界",
+    "lesson": "L07"
+  },
+  {
+    "english": "laughter",
+    "japanese": "笑い",
+    "lesson": "L07"
+  },
+  {
+    "english": "bedroom",
+    "japanese": "寝室",
+    "lesson": "L07"
+  },
+  {
+    "english": "bathroom",
+    "japanese": "浴室",
+    "lesson": "L07"
+  },
+  {
+    "english": "dining room",
+    "japanese": "食堂",
+    "lesson": "L07"
+  },
+  {
+    "english": "brush",
+    "japanese": "～をブラシで磨く",
+    "lesson": "L07"
+  },
+  {
+    "english": "teeth",
+    "japanese": "tooth の複数形",
+    "lesson": "L07"
+  },
+  {
+    "english": "tooth",
+    "japanese": "歯",
+    "lesson": "L07"
+  },
+  {
+    "english": "water",
+    "japanese": "～に水をやる",
+    "lesson": "L07"
+  },
+  {
+    "english": "plant",
+    "japanese": "植物",
+    "lesson": "L07"
+  },
+  {
+    "english": "front",
+    "japanese": "前，正面",
+    "lesson": "L08"
+  },
+  {
+    "english": "class",
+    "japanese": "クラスの生徒たち，学級",
+    "lesson": "L08"
+  },
+  {
+    "english": "arrive",
+    "japanese": "到着する，着く",
+    "lesson": "L08"
+  },
+  {
+    "english": "early",
+    "japanese": "早く",
+    "lesson": "L08"
+  },
+  {
+    "english": "Mrs.",
+    "japanese": "《既婚女性の姓の前で》～さん，先生",
+    "lesson": "L08"
+  },
+  {
+    "english": "south",
+    "japanese": "南，南部，南方",
+    "lesson": "L08"
+  },
+  {
+    "english": "culture",
+    "japanese": "文化",
+    "lesson": "L08"
+  },
+  {
+    "english": "country",
+    "japanese": "国",
+    "lesson": "L08"
+  },
+  {
+    "english": "ask",
+    "japanese": "たずねる",
+    "lesson": "L08"
+  },
+  {
+    "english": "answer",
+    "japanese": "答える",
+    "lesson": "L08"
+  },
+  {
+    "english": "last",
+    "japanese": "この前の，先～",
+    "lesson": "L08"
+  },
+  {
+    "english": "ago",
+    "japanese": "～前に《時間を表す語のあとなどにつけて》",
+    "lesson": "L08"
+  },
+  {
+    "english": "exam",
+    "japanese": "試験",
+    "lesson": "L08"
+  },
+  {
+    "english": "yesterday",
+    "japanese": "昨日",
+    "lesson": "L08"
+  },
+  {
+    "english": "drop",
+    "japanese": "落ちる，～を落とす",
+    "lesson": "L08"
+  },
+  {
+    "english": "way",
+    "japanese": "道筋，道",
+    "lesson": "L08"
+  },
+  {
+    "english": "carry",
+    "japanese": "～を運ぶ",
+    "lesson": "L08"
+  },
+  {
+    "english": "stop",
+    "japanese": "止まる，～を止める",
+    "lesson": "L08"
+  },
+  {
+    "english": "plan",
+    "japanese": "～を計画する",
+    "lesson": "L08"
+  },
+  {
+    "english": "month",
+    "japanese": "1ヵ月，月",
+    "lesson": "L08"
+  },
+  {
+    "english": "did",
+    "japanese": "do の過去形《疑問文や否定文に用いられる》",
+    "lesson": "L08"
+  },
+  {
+    "english": "anime",
+    "japanese": "アニメ",
+    "lesson": "L08"
+  },
+  {
+    "english": "sound",
+    "japanese": "～に聞こえる",
+    "lesson": "L08"
+  },
+  {
+    "english": "move",
+    "japanese": "～を動かす，移動させる",
+    "lesson": "L08"
+  },
+  {
+    "english": "PC",
+    "japanese": "《Personal Computer の略》パソコン",
+    "lesson": "L08"
+  },
+  {
+    "english": "setting",
+    "japanese": "設定",
+    "lesson": "L08"
+  },
+  {
+    "english": "didn't",
+    "japanese": "did not の短縮形",
+    "lesson": "L08"
+  },
+  {
+    "english": "smartphone",
+    "japanese": "スマートフォン",
+    "lesson": "L08"
+  },
+  {
+    "english": "back",
+    "japanese": "返して",
+    "lesson": "L08"
+  },
+  {
+    "english": "Mike",
+    "japanese": "マイク《男性名》",
+    "lesson": "L08"
+  },
+  {
+    "english": "travel",
+    "japanese": "旅行する",
+    "lesson": "L08"
+  },
+  {
+    "english": "however",
+    "japanese": "しかしながら，けれども",
+    "lesson": "L08"
+  },
+  {
+    "english": "say",
+    "japanese": "～と言う",
+    "lesson": "L08"
+  },
+  {
+    "english": "took",
+    "japanese": "take の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "ate",
+    "japanese": "eat の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "finally",
+    "japanese": "最後に",
+    "lesson": "L08"
+  },
+  {
+    "english": "knew",
+    "japanese": "know の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "went",
+    "japanese": "go の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "left",
+    "japanese": "leave の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "leave",
+    "japanese": "～を出発する，去る",
+    "lesson": "L08"
+  },
+  {
+    "english": "hotel",
+    "japanese": "ホテル，旅館",
+    "lesson": "L08"
+  },
+  {
+    "english": "airport",
+    "japanese": "空港",
+    "lesson": "L08"
+  },
+  {
+    "english": "saw",
+    "japanese": "see の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "actor",
+    "japanese": "俳優",
+    "lesson": "L08"
+  },
+  {
+    "english": "plane",
+    "japanese": "飛行機",
+    "lesson": "L08"
+  },
+  {
+    "english": "begin",
+    "japanese": "始まる，～を始める",
+    "lesson": "L08"
+  },
+  {
+    "english": "began",
+    "japanese": "begin の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "brought",
+    "japanese": "bring の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "bought",
+    "japanese": "buy の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "came",
+    "japanese": "come の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "forget",
+    "japanese": "～を忘れる",
+    "lesson": "L08"
+  },
+  {
+    "english": "forgot",
+    "japanese": "forget の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "got",
+    "japanese": "get の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "gave",
+    "japanese": "give の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "had",
+    "japanese": "have の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "hear",
+    "japanese": "～が聞こえる",
+    "lesson": "L08"
+  },
+  {
+    "english": "heard",
+    "japanese": "hear の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "lose",
+    "japanese": "～を失う，なくす",
+    "lesson": "L08"
+  },
+  {
+    "english": "lost",
+    "japanese": "lose の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "made",
+    "japanese": "make の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "met",
+    "japanese": "meet の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "put",
+    "japanese": "put の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "read",
+    "japanese": "read の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "ran",
+    "japanese": "run の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "said",
+    "japanese": "say の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "sell",
+    "japanese": "～を売る",
+    "lesson": "L08"
+  },
+  {
+    "english": "sold",
+    "japanese": "sell の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "sent",
+    "japanese": "send の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "sang",
+    "japanese": "sing の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "spoke",
+    "japanese": "speak の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "swam",
+    "japanese": "swim の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "taught",
+    "japanese": "teach の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "tell",
+    "japanese": "～に告げる，伝える",
+    "lesson": "L08"
+  },
+  {
+    "english": "told",
+    "japanese": "tell の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "wrote",
+    "japanese": "write の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "comic",
+    "japanese": "マンガの",
+    "lesson": "L08"
+  },
+  {
+    "english": "coffee",
+    "japanese": "コーヒー",
+    "lesson": "L08"
+  },
+  {
+    "english": "drank",
+    "japanese": "drink の過去形",
+    "lesson": "L08"
+  },
+  {
+    "english": "Denali",
+    "japanese": "デナリ《地名》",
+    "lesson": "L08"
+  },
+  {
+    "english": "Alaska",
+    "japanese": "アラスカ《地名》",
+    "lesson": "L08"
+  },
+  {
+    "english": "McKinley",
+    "japanese": "マッキンリー《山の名》",
+    "lesson": "L08"
+  },
+  {
+    "english": "Anchorage",
+    "japanese": "アンカレッジ《地名》",
+    "lesson": "L08"
+  },
+  {
+    "english": "journey",
+    "japanese": "旅行",
+    "lesson": "L08"
+  },
+  {
+    "english": "half",
+    "japanese": "半時間，半分",
+    "lesson": "L08"
+  },
+  {
+    "english": "hour",
+    "japanese": "1時間",
+    "lesson": "L08"
+  },
+  {
+    "english": "own",
+    "japanese": "自分の，自分自身の",
+    "lesson": "L08"
+  },
+  {
+    "english": "public",
+    "japanese": "公共の",
+    "lesson": "L08"
+  },
+  {
+    "english": "tour",
+    "japanese": "旅行，観光",
+    "lesson": "L08"
+  },
+  {
+    "english": "bear",
+    "japanese": "クマ",
+    "lesson": "L08"
+  },
+  {
+    "english": "brown bear",
+    "japanese": "ヒグマ",
+    "lesson": "L08"
+  },
+  {
+    "english": "wolf",
+    "japanese": "オオカミ",
+    "lesson": "L08"
+  },
+  {
+    "english": "wolves",
+    "japanese": "wolf の複数形",
+    "lesson": "L08"
+  },
+  {
+    "english": "wild",
+    "japanese": "野生の",
+    "lesson": "L08"
+  },
+  {
+    "english": "safely",
+    "japanese": "安全に",
+    "lesson": "L08"
+  },
+  {
+    "english": "aurora",
+    "japanese": "オーロラ",
+    "lesson": "L08"
+  },
+  {
+    "english": "during",
+    "japanese": "～の間中（ずっと）",
+    "lesson": "L08"
+  },
+  {
+    "english": "trip",
+    "japanese": "旅行",
+    "lesson": "L08"
+  },
+  {
+    "english": "greeting",
+    "japanese": "《greetingsで》便り",
+    "lesson": "L08"
+  },
+  {
+    "english": "letter",
+    "japanese": "手紙",
+    "lesson": "L08"
+  },
+  {
+    "english": "camp",
+    "japanese": "キャンプをする",
+    "lesson": "L08"
+  },
+  {
+    "english": "close",
+    "japanese": "接近して，ごく近くに",
+    "lesson": "L08"
+  },
+  {
+    "english": "pay",
+    "japanese": "～を払う，～を支払う",
+    "lesson": "L08"
+  },
+  {
+    "english": "attention",
+    "japanese": "注意，注目",
+    "lesson": "L08"
+  },
+  {
+    "english": "appear",
+    "japanese": "現れる",
+    "lesson": "L08"
+  },
+  {
+    "english": "little",
+    "japanese": "少しは",
+    "lesson": "L08"
+  },
+  {
+    "english": "sad",
+    "japanese": "悲しい",
+    "lesson": "L08"
+  },
+  {
+    "english": "enjoy",
+    "japanese": "～を楽しむ",
+    "lesson": "L08"
+  },
+  {
+    "english": "Robert",
+    "japanese": "ロバート《男性名》",
+    "lesson": "L08"
+  },
+  {
+    "english": "grandma",
+    "japanese": "おばあちゃん",
+    "lesson": "L08"
+  },
+  {
+    "english": "attend",
+    "japanese": "～に出席する，参列する",
+    "lesson": "L08"
+  },
+  {
+    "english": "concert",
+    "japanese": "コンサート，演奏会",
+    "lesson": "L08"
+  },
+  {
+    "english": "tomorrow",
+    "japanese": "明日",
+    "lesson": "L08"
+  },
+  {
+    "english": "game",
+    "japanese": "ゲーム，試合",
+    "lesson": "L08"
+  },
+  {
+    "english": "bowl",
+    "japanese": "ボウリングをする",
+    "lesson": "L08"
+  },
+  {
+    "english": "cycle",
+    "japanese": "自転車に乗る",
+    "lesson": "L08"
+  },
+  {
+    "english": "amusement park",
+    "japanese": "遊園地",
+    "lesson": "L08"
+  },
+  {
+    "english": "happy",
+    "japanese": "幸福な，楽しい",
+    "lesson": "L09"
+  },
+  {
+    "english": "angry",
+    "japanese": "怒った",
+    "lesson": "L09"
+  },
+  {
+    "english": "thirsty",
+    "japanese": "のどの渇いた",
+    "lesson": "L09"
+  },
+  {
+    "english": "tired",
+    "japanese": "疲れた",
+    "lesson": "L09"
+  },
+  {
+    "english": "scared",
+    "japanese": "怖がった，おびえた",
+    "lesson": "L09"
+  },
+  {
+    "english": "were",
+    "japanese": "be動詞の2人称単数過去形と1・2・3 人称複数過去形",
+    "lesson": "L09"
+  },
+  {
+    "english": "absent",
+    "japanese": "欠席して",
+    "lesson": "L09"
+  },
+  {
+    "english": "wasn't",
+    "japanese": "was not の短縮形",
+    "lesson": "L09"
+  },
+  {
+    "english": "was",
+    "japanese": "be動詞の1・3人称単数過去形",
+    "lesson": "L09"
+  },
+  {
+    "english": "fever",
+    "japanese": "（病気の）熱",
+    "lesson": "L09"
+  },
+  {
+    "english": "chicken",
+    "japanese": "鶏肉，チキン",
+    "lesson": "L09"
+  },
+  {
+    "english": "weren't",
+    "japanese": "were not の短縮形",
+    "lesson": "L09"
+  },
+  {
+    "english": "gym",
+    "japanese": "体育館",
+    "lesson": "L09"
+  },
+  {
+    "english": "p.m.",
+    "japanese": "午後～時《時刻のあとにつけて》",
+    "lesson": "L09"
+  },
+  {
+    "english": "Jim",
+    "japanese": "ジム《男性名》",
+    "lesson": "L09"
+  },
+  {
+    "english": "blackout",
+    "japanese": "停電",
+    "lesson": "L09"
+  },
+  {
+    "english": "scream",
+    "japanese": "悲鳴",
+    "lesson": "L09"
+  },
+  {
+    "english": "catch",
+    "japanese": "キャッチボール",
+    "lesson": "L09"
+  },
+  {
+    "english": "drama",
+    "japanese": "ドラマ，劇",
+    "lesson": "L09"
+  },
+  {
+    "english": "lesson",
+    "japanese": "稽古，学課，レッスン",
+    "lesson": "L09"
+  },
+  {
+    "english": "sunny",
+    "japanese": "晴れた",
+    "lesson": "L09"
+  },
+  {
+    "english": "quite",
+    "japanese": "非常に，とても",
+    "lesson": "L09"
+  },
+  {
+    "english": "cool",
+    "japanese": "涼しい",
+    "lesson": "L09"
+  },
+  {
+    "english": "far",
+    "japanese": "遠くの",
+    "lesson": "L09"
+  },
+  {
+    "english": "studio",
+    "japanese": "スタジオ",
+    "lesson": "L09"
+  },
+  {
+    "english": "minute",
+    "japanese": "《時間の》分",
+    "lesson": "L09"
+  },
+  {
+    "english": "date",
+    "japanese": "日付",
+    "lesson": "L09"
+  },
+  {
+    "english": "cloudy",
+    "japanese": "曇った",
+    "lesson": "L09"
+  },
+  {
+    "english": "rain",
+    "japanese": "雨が降る",
+    "lesson": "L09"
+  },
+  {
+    "english": "dark",
+    "japanese": "暗い",
+    "lesson": "L09"
+  },
+  {
+    "english": "rainy",
+    "japanese": "雨の降る",
+    "lesson": "L09"
+  },
+  {
+    "english": "snowy",
+    "japanese": "雪の降る",
+    "lesson": "L09"
+  },
+  {
+    "english": "snow",
+    "japanese": "雪が降る",
+    "lesson": "L09"
+  },
+  {
+    "english": "windy",
+    "japanese": "風の吹く，風の強い",
+    "lesson": "L09"
+  },
+  {
+    "english": "Alex",
+    "japanese": "アレックス《女性名》",
+    "lesson": "L09"
+  },
+  {
+    "english": "Scott",
+    "japanese": "スコット《姓》",
+    "lesson": "L09"
+  },
+  {
+    "english": "important",
+    "japanese": "重要な，大切な",
+    "lesson": "L09"
+  },
+  {
+    "english": "cancer",
+    "japanese": "がん《病名》",
+    "lesson": "L09"
+  },
+  {
+    "english": "brave",
+    "japanese": "勇敢な",
+    "lesson": "L09"
+  },
+  {
+    "english": "spent",
+    "japanese": "spend の過去形",
+    "lesson": "L09"
+  },
+  {
+    "english": "even",
+    "japanese": "～でさえ",
+    "lesson": "L09"
+  },
+  {
+    "english": "age",
+    "japanese": "年齢，年",
+    "lesson": "L09"
+  },
+  {
+    "english": "thought",
+    "japanese": "think の過去形",
+    "lesson": "L09"
+  },
+  {
+    "english": "think",
+    "japanese": "～と考える",
+    "lesson": "L09"
+  },
+  {
+    "english": "research",
+    "japanese": "研究",
+    "lesson": "L09"
+  },
+  {
+    "english": "money",
+    "japanese": "金，金銭",
+    "lesson": "L09"
+  },
+  {
+    "english": "only",
+    "japanese": "ほんの～にすぎない",
+    "lesson": "L09"
+  },
+  {
+    "english": "lemonade",
+    "japanese": "レモネード",
+    "lesson": "L09"
+  },
+  {
+    "english": "shop",
+    "japanese": "店",
+    "lesson": "L09"
+  },
+  {
+    "english": "neighbor",
+    "japanese": "近所の人，隣人",
+    "lesson": "L09"
+  },
+  {
+    "english": "million",
+    "japanese": "100万（の）",
+    "lesson": "L09"
+  },
+  {
+    "english": "Hawaii",
+    "japanese": "ハワイ",
+    "lesson": "L09"
+  },
+  {
+    "english": "technology",
+    "japanese": "科学技術，テクノロジー",
+    "lesson": "FR1"
+  },
+  {
+    "english": "company",
+    "japanese": "会社",
+    "lesson": "FR1"
+  },
+  {
+    "english": "product",
+    "japanese": "製品",
+    "lesson": "FR1"
+  },
+  {
+    "english": "born",
+    "japanese": "《be bornで》生まれる",
+    "lesson": "FR1"
+  },
+  {
+    "english": "troublemaker",
+    "japanese": "トラブルメーカー（問題を起こす人）",
+    "lesson": "FR1"
+  },
+  {
+    "english": "curious",
+    "japanese": "好奇心が強い",
+    "lesson": "FR1"
+  },
+  {
+    "english": "few",
+    "japanese": "ほとんどない《数を示す》",
+    "lesson": "FR1"
+  },
+  {
+    "english": "eventually",
+    "japanese": "結局",
+    "lesson": "FR1"
+  },
+  {
+    "english": "writing",
+    "japanese": "書体",
+    "lesson": "FR1"
+  },
+  {
+    "english": "built",
+    "japanese": "build の過去形",
+    "lesson": "FR1"
+  },
+  {
+    "english": "build",
+    "japanese": "～を作る，～を組み立てる",
+    "lesson": "FR1"
+  },
+  {
+    "english": "business",
+    "japanese": "商売，仕事",
+    "lesson": "FR1"
+  },
+  {
+    "english": "success",
+    "japanese": "成功",
+    "lesson": "FR1"
+  },
+  {
+    "english": "simplicity",
+    "japanese": "簡素，質素",
+    "lesson": "FR1"
+  },
+  {
+    "english": "example",
+    "japanese": "例",
+    "lesson": "FR1"
+  },
+  {
+    "english": "clothing",
+    "japanese": "衣料品，衣類",
+    "lesson": "FR1"
+  },
+  {
+    "english": "wore",
+    "japanese": "wear の過去形",
+    "lesson": "FR1"
+  },
+  {
+    "english": "wear",
+    "japanese": "～を着ている，～を身につけている",
+    "lesson": "FR1"
+  },
+  {
+    "english": "same",
+    "japanese": "同じ",
+    "lesson": "FR1"
+  },
+  {
+    "english": "simple",
+    "japanese": "質素な，飾り気のない",
+    "lesson": "FR1"
+  },
+  {
+    "english": "stylish",
+    "japanese": "洗練された，スタイリッシュな",
+    "lesson": "FR1"
+  },
+  {
+    "english": "stay",
+    "japanese": "～のままでいる",
+    "lesson": "FR1"
+  },
+  {
+    "english": "foolish",
+    "japanese": "愚かな",
+    "lesson": "FR1"
+  },
+  {
+    "english": "quote",
+    "japanese": "引用",
+    "lesson": "FR1"
+  },
+  {
+    "english": "poor",
+    "japanese": "よくない，不十分な",
+    "lesson": "FR1"
+  },
+  {
+    "english": "dream",
+    "japanese": "夢",
+    "lesson": "FR1"
+  },
+  {
+    "english": "unique",
+    "japanese": "独特の，類のない",
+    "lesson": "FR1"
+  },
+  {
+    "english": "death",
+    "japanese": "死，死亡",
+    "lesson": "FR1"
+  },
+  {
+    "english": "photograph",
+    "japanese": "写真",
+    "lesson": "L10"
+  },
+  {
+    "english": "popular",
+    "japanese": "人気のある",
+    "lesson": "L10"
+  },
+  {
+    "english": "quick",
+    "japanese": "すばやい",
+    "lesson": "L10"
+  },
+  {
+    "english": "meal",
+    "japanese": "食事",
+    "lesson": "L10"
+  },
+  {
+    "english": "onion",
+    "japanese": "タマネギ",
+    "lesson": "L10"
+  },
+  {
+    "english": "seasoning",
+    "japanese": "調味料",
+    "lesson": "L10"
+  },
+  {
+    "english": "sake",
+    "japanese": "日本酒",
+    "lesson": "L10"
+  },
+  {
+    "english": "soy sauce",
+    "japanese": "しょう油",
+    "lesson": "L10"
+  },
+  {
+    "english": "tonight",
+    "japanese": "今夜",
+    "lesson": "L10"
+  },
+  {
+    "english": "climb",
+    "japanese": "～に登る",
+    "lesson": "L10"
+  },
+  {
+    "english": "ounce",
+    "japanese": "オンス《単位》",
+    "lesson": "L10"
+  },
+  {
+    "english": "tablespoon",
+    "japanese": "大さじ《単位》",
+    "lesson": "L10"
+  },
+  {
+    "english": "sugar",
+    "japanese": "砂糖",
+    "lesson": "L10"
+  },
+  {
+    "english": "boil",
+    "japanese": "～を沸かす",
+    "lesson": "L10"
+  },
+  {
+    "english": "add",
+    "japanese": "～を加える，足す",
+    "lesson": "L10"
+  },
+  {
+    "english": "why",
+    "japanese": "なぜ",
+    "lesson": "L10"
+  },
+  {
+    "english": "because",
+    "japanese": "…だから",
+    "lesson": "L10"
+  },
+  {
+    "english": "thin",
+    "japanese": "薄い",
+    "lesson": "L10"
+  },
+  {
+    "english": "slice",
+    "japanese": "《薄く切った》1切れ",
+    "lesson": "L10"
+  },
+  {
+    "english": "such",
+    "japanese": "そのような，そんな",
+    "lesson": "L10"
+  },
+  {
+    "english": "suitcase",
+    "japanese": "スーツケース",
+    "lesson": "L10"
+  },
+  {
+    "english": "holiday",
+    "japanese": "休日，祝日",
+    "lesson": "L10"
+  },
+  {
+    "english": "twice",
+    "japanese": "2度",
+    "lesson": "L10"
+  },
+  {
+    "english": "once",
+    "japanese": "1度",
+    "lesson": "L10"
+  },
+  {
+    "english": "free",
+    "japanese": "暇な，あいている",
+    "lesson": "L10"
+  },
+  {
+    "english": "will",
+    "japanese": "…するでしょう，…するつもりだ",
+    "lesson": "L10"
+  },
+  {
+    "english": "forward",
+    "japanese": "→ look",
+    "lesson": "L10"
+  },
+  {
+    "english": "I'll",
+    "japanese": "I will の短縮形",
+    "lesson": "L10"
+  },
+  {
+    "english": "you'll",
+    "japanese": "you will の短縮形",
+    "lesson": "L10"
+  },
+  {
+    "english": "he'll",
+    "japanese": "he will の短縮形",
+    "lesson": "L10"
+  },
+  {
+    "english": "she'll",
+    "japanese": "she will の短縮形",
+    "lesson": "L10"
+  },
+  {
+    "english": "it'll",
+    "japanese": "it will の短縮形",
+    "lesson": "L10"
+  },
+  {
+    "english": "we'll",
+    "japanese": "we will の短縮形",
+    "lesson": "L10"
+  },
+  {
+    "english": "they'll",
+    "japanese": "they will の短縮形",
+    "lesson": "L10"
+  },
+  {
+    "english": "ring",
+    "japanese": "鳴る",
+    "lesson": "L10"
+  },
+  {
+    "english": "won't",
+    "japanese": "will not の短縮形",
+    "lesson": "L10"
+  },
+  {
+    "english": "borrow",
+    "japanese": "～を借りる",
+    "lesson": "L10"
+  },
+  {
+    "english": "course",
+    "japanese": "経過，成り行き",
+    "lesson": "L10"
+  },
+  {
+    "english": "certainly",
+    "japanese": "いいですとも，もちろん",
+    "lesson": "L10"
+  },
+  {
+    "english": "heat",
+    "japanese": "熱，火",
+    "lesson": "L10"
+  },
+  {
+    "english": "mustn't",
+    "japanese": "must not の短縮形",
+    "lesson": "L10"
+  },
+  {
+    "english": "tough",
+    "japanese": "かたい",
+    "lesson": "L10"
+  },
+  {
+    "english": "ginger",
+    "japanese": "ショウガ",
+    "lesson": "L10"
+  },
+  {
+    "english": "spicy",
+    "japanese": "香辛料のきいた",
+    "lesson": "L10"
+  },
+  {
+    "english": "raw",
+    "japanese": "生の，加工されていない",
+    "lesson": "L10"
+  },
+  {
+    "english": "fried egg",
+    "japanese": "目玉焼き",
+    "lesson": "L10"
+  },
+  {
+    "english": "must",
+    "japanese": "…しなければならない，…に違いない",
+    "lesson": "L10"
+  },
+  {
+    "english": "ring",
+    "japanese": "指輪",
+    "lesson": "L10"
+  },
+  {
+    "english": "true",
+    "japanese": "真実の，本当の",
+    "lesson": "L10"
+  },
+  {
+    "english": "cell phone",
+    "japanese": "携帯電話",
+    "lesson": "L10"
+  },
+  {
+    "english": "plastic",
+    "japanese": "ビニール〔プラスチック〕製の",
+    "lesson": "L10"
+  },
+  {
+    "english": "bottle",
+    "japanese": "ボトル，びん",
+    "lesson": "L10"
+  },
+  {
+    "english": "recycle",
+    "japanese": "～をリサイクルする，再生利用する",
+    "lesson": "L10"
+  },
+  {
+    "english": "throw",
+    "japanese": "～を投げる",
+    "lesson": "L10"
+  },
+  {
+    "english": "reduce",
+    "japanese": "～を減らす",
+    "lesson": "L10"
+  },
+  {
+    "english": "waste",
+    "japanese": "ごみ，廃棄物",
+    "lesson": "L10"
+  },
+  {
+    "english": "presentation",
+    "japanese": "口頭発表，プレゼンテーション",
+    "lesson": "L10"
+  },
+  {
+    "english": "Emma",
+    "japanese": "エマ《人名》",
+    "lesson": "L10"
+  },
+  {
+    "english": "found",
+    "japanese": "find の過去形",
+    "lesson": "L10"
+  },
+  {
+    "english": "find",
+    "japanese": "～を見つける，～を発見する",
+    "lesson": "L10"
+  },
+  {
+    "english": "article",
+    "japanese": "記事",
+    "lesson": "L10"
+  },
+  {
+    "english": "Internet",
+    "japanese": "《the ～で》インターネット",
+    "lesson": "L10"
+  },
+  {
+    "english": "Ooho",
+    "japanese": "オウホウ《商品名》",
+    "lesson": "L10"
+  },
+  {
+    "english": "bubble",
+    "japanese": "泡",
+    "lesson": "L10"
+  },
+  {
+    "english": "college",
+    "japanese": "大学，単科大学",
+    "lesson": "L10"
+  },
+  {
+    "english": "instead",
+    "japanese": "その代わりに",
+    "lesson": "L10"
+  },
+  {
+    "english": "container",
+    "japanese": "容器",
+    "lesson": "L10"
+  },
+  {
+    "english": "amount",
+    "japanese": "量，額",
+    "lesson": "L10"
+  },
+  {
+    "english": "marathon",
+    "japanese": "マラソン",
+    "lesson": "L10"
+  },
+  {
+    "english": "environment",
+    "japanese": "環境",
+    "lesson": "L10"
+  },
+  {
+    "english": "check",
+    "japanese": "～を調べる，確かめる",
+    "lesson": "L10"
+  },
+  {
+    "english": "easily",
+    "japanese": "容易に，やすやすと",
+    "lesson": "L10"
+  },
+  {
+    "english": "ceremony",
+    "japanese": "式，式典",
+    "lesson": "L10"
+  },
+  {
+    "english": "field trip",
+    "japanese": "校外見学",
+    "lesson": "L10"
+  },
+  {
+    "english": "excursion",
+    "japanese": "遠足",
+    "lesson": "L10"
+  },
+  {
+    "english": "chorus",
+    "japanese": "合唱",
+    "lesson": "L10"
+  },
+  {
+    "english": "contest",
+    "japanese": "コンテスト，競技会",
+    "lesson": "L10"
+  },
+  {
+    "english": "graduation",
+    "japanese": "卒業",
+    "lesson": "L10"
+  },
+  {
+    "english": "natural",
+    "japanese": "自然の，天然の",
+    "lesson": "L11"
+  },
+  {
+    "english": "history",
+    "japanese": "歴史",
+    "lesson": "L11"
+  },
+  {
+    "english": "town",
+    "japanese": "町",
+    "lesson": "L11"
+  },
+  {
+    "english": "tiger",
+    "japanese": "トラ",
+    "lesson": "L11"
+  },
+  {
+    "english": "shopping mall",
+    "japanese": "ショッピングセンター，商店街",
+    "lesson": "L11"
+  },
+  {
+    "english": "tourist",
+    "japanese": "旅行者，観光客",
+    "lesson": "L11"
+  },
+  {
+    "english": "center",
+    "japanese": "中心，中央",
+    "lesson": "L11"
+  },
+  {
+    "english": "church",
+    "japanese": "教会",
+    "lesson": "L11"
+  },
+  {
+    "english": "behind",
+    "japanese": "～の後ろに",
+    "lesson": "L11"
+  },
+  {
+    "english": "bridge",
+    "japanese": "橋",
+    "lesson": "L11"
+  },
+  {
+    "english": "cherry",
+    "japanese": "桜",
+    "lesson": "L11"
+  },
+  {
+    "english": "African",
+    "japanese": "アフリカの",
+    "lesson": "L11"
+  },
+  {
+    "english": "penguin",
+    "japanese": "ペンギン",
+    "lesson": "L11"
+  },
+  {
+    "english": "Africa",
+    "japanese": "アフリカ",
+    "lesson": "L11"
+  },
+  {
+    "english": "South Africa",
+    "japanese": "南アフリカ",
+    "lesson": "L11"
+  },
+  {
+    "english": "actually",
+    "japanese": "実際は",
+    "lesson": "L11"
+  },
+  {
+    "english": "example",
+    "japanese": "例",
+    "lesson": "L11"
+  },
+  {
+    "english": "traffic light",
+    "japanese": "交通信号",
+    "lesson": "L11"
+  },
+  {
+    "english": "road",
+    "japanese": "道路",
+    "lesson": "L11"
+  },
+  {
+    "english": "few",
+    "japanese": "ほとんどない《数を示す》",
+    "lesson": "L11"
+  },
+  {
+    "english": "paper",
+    "japanese": "紙",
+    "lesson": "L11"
+  },
+  {
+    "english": "news",
+    "japanese": "知らせ，ニュース",
+    "lesson": "L11"
+  },
+  {
+    "english": "gift",
+    "japanese": "贈り物，プレゼント",
+    "lesson": "L11"
+  },
+  {
+    "english": "glass",
+    "japanese": "コップ，グラス",
+    "lesson": "L11"
+  },
+  {
+    "english": "juice",
+    "japanese": "ジュース",
+    "lesson": "L11"
+  },
+  {
+    "english": "sheet",
+    "japanese": "《紙など薄いもの》1枚",
+    "lesson": "L11"
+  },
+  {
+    "english": "piece",
+    "japanese": "一片，一部分",
+    "lesson": "L11"
+  },
+  {
+    "english": "pot",
+    "japanese": "つぼ，鉢",
+    "lesson": "L11"
+  },
+  {
+    "english": "there's",
+    "japanese": "there is の短縮形",
+    "lesson": "L11"
+  },
+  {
+    "english": "Cambodia",
+    "japanese": "カンボジア",
+    "lesson": "L11"
+  },
+  {
+    "english": "collect",
+    "japanese": "～を集める",
+    "lesson": "L11"
+  },
+  {
+    "english": "reusable",
+    "japanese": "再利用可能な",
+    "lesson": "L11"
+  },
+  {
+    "english": "garbage",
+    "japanese": "《台所などの》ごみ",
+    "lesson": "L11"
+  },
+  {
+    "english": "dream",
+    "japanese": "夢",
+    "lesson": "L11"
+  },
+  {
+    "english": "future",
+    "japanese": "未来，将来",
+    "lesson": "L11"
+  },
+  {
+    "english": "Ghana",
+    "japanese": "ガーナ",
+    "lesson": "L11"
+  },
+  {
+    "english": "cacao",
+    "japanese": "カカオ",
+    "lesson": "L11"
+  },
+  {
+    "english": "farm",
+    "japanese": "農場",
+    "lesson": "L11"
+  },
+  {
+    "english": "globally",
+    "japanese": "世界的に",
+    "lesson": "L11"
+  },
+  {
+    "english": "according",
+    "japanese": "《according toで》～によれば",
+    "lesson": "L11"
+  },
+  {
+    "english": "the World Bank",
+    "japanese": "世界銀行",
+    "lesson": "L11"
+  },
+  {
+    "english": "poor",
+    "japanese": "貧しい",
+    "lesson": "L11"
+  },
+  {
+    "english": "poverty",
+    "japanese": "貧困",
+    "lesson": "L11"
+  },
+  {
+    "english": "lack",
+    "japanese": "不足，欠乏",
+    "lesson": "L11"
+  },
+  {
+    "english": "education",
+    "japanese": "教育",
+    "lesson": "L11"
+  },
+  {
+    "english": "destruction",
+    "japanese": "破壊",
+    "lesson": "L11"
+  },
+  {
+    "english": "action",
+    "japanese": "行動，活動，行為",
+    "lesson": "L11"
+  },
+  {
+    "english": "resolve",
+    "japanese": "～を解決する",
+    "lesson": "L11"
+  },
+  {
+    "english": "bakery",
+    "japanese": "パン屋",
+    "lesson": "L11"
+  },
+  {
+    "english": "drugstore",
+    "japanese": "ドラッグストア，薬局",
+    "lesson": "L11"
+  },
+  {
+    "english": "fire station",
+    "japanese": "消防署",
+    "lesson": "L11"
+  },
+  {
+    "english": "movie theater",
+    "japanese": "映画館",
+    "lesson": "L11"
+  },
+  {
+    "english": "barbershop",
+    "japanese": "理髪店",
+    "lesson": "L11"
+  },
+  {
+    "english": "gas station",
+    "japanese": "ガソリンスタンド",
+    "lesson": "L11"
+  },
+  {
+    "english": "fridge",
+    "japanese": "冷蔵庫",
+    "lesson": "L11"
+  },
+  {
+    "english": "hamburger",
+    "japanese": "ハンバーガー",
+    "lesson": "L11"
+  },
+  {
+    "english": "pizza",
+    "japanese": "ピザ",
+    "lesson": "L11"
+  },
+  {
+    "english": "hot dog",
+    "japanese": "ホットドッグ",
+    "lesson": "L11"
+  },
+  {
+    "english": "French fries",
+    "japanese": "フライドポテト",
+    "lesson": "L11"
+  },
+  {
+    "english": "ice cream",
+    "japanese": "アイスクリーム",
+    "lesson": "L11"
+  },
+  {
+    "english": "bean",
+    "japanese": "豆",
+    "lesson": "FR2"
+  },
+  {
+    "english": "main",
+    "japanese": "主な，主要な",
+    "lesson": "FR2"
+  },
+  {
+    "english": "ingredient",
+    "japanese": "《料理などの》材料",
+    "lesson": "FR2"
+  },
+  {
+    "english": "western",
+    "japanese": "西の",
+    "lesson": "FR2"
+  },
+  {
+    "english": "smile",
+    "japanese": "ほほえみ，笑顔",
+    "lesson": "FR2"
+  },
+  {
+    "english": "happen",
+    "japanese": "起こる，生じる",
+    "lesson": "FR2"
+  },
+  {
+    "english": "labor",
+    "japanese": "労働",
+    "lesson": "FR2"
+  },
+  {
+    "english": "condition",
+    "japanese": "（周囲の）状況",
+    "lesson": "FR2"
+  },
+  {
+    "english": "almost",
+    "japanese": "ほとんど",
+    "lesson": "FR2"
+  },
+  {
+    "english": "better",
+    "japanese": "よりよい《good の比較級》",
+    "lesson": "FR2"
+  },
+  {
+    "english": "felt",
+    "japanese": "feel の過去形",
+    "lesson": "FR2"
+  },
+  {
+    "english": "feel",
+    "japanese": "～を感じる",
+    "lesson": "FR2"
+  },
+  {
+    "english": "project",
+    "japanese": "企画，プロジェクト",
+    "lesson": "FR2"
+  },
+  {
+    "english": "effect",
+    "japanese": "影響，効果",
+    "lesson": "FR2"
+  },
+  {
+    "english": "importance",
+    "japanese": "大切さ，重要性",
+    "lesson": "FR2"
+  },
+  {
+    "english": "through",
+    "japanese": "～を通して",
+    "lesson": "FR2"
+  },
+  {
+    "english": "thing",
+    "japanese": "物，事",
+    "lesson": "FR2"
+  },
+  {
+    "english": "improve",
+    "japanese": "～を改善する",
+    "lesson": "FR2"
+  },
+  {
+    "english": "support",
+    "japanese": "支援，支え",
+    "lesson": "FR2"
+  },
+  {
+    "english": "focus",
+    "japanese": "集中する，焦点を合わせる",
+    "lesson": "FR2"
+  },
+  {
+    "english": "save",
+    "japanese": "～を救う",
+    "lesson": "FR2"
+  },
+  {
+    "english": "dangerous",
+    "japanese": "危険な",
+    "lesson": "FR2"
+  },
+  {
+    "english": "more",
+    "japanese": "より多くの《many と much の比較級》",
+    "lesson": "FR2"
+  },
+  {
+    "english": "impact",
+    "japanese": "影響（力），効果",
+    "lesson": "FR2"
+  },
+  {
+    "english": "cheap",
+    "japanese": "安い，安価な",
+    "lesson": "L12"
+  },
+  {
+    "english": "expensive",
+    "japanese": "高価な，（値段が）高い",
+    "lesson": "L12"
+  },
+  {
+    "english": "light",
+    "japanese": "軽い",
+    "lesson": "L12"
+  },
+  {
+    "english": "heavy",
+    "japanese": "重い",
+    "lesson": "L12"
+  },
+  {
+    "english": "difficult",
+    "japanese": "難しい，困難な",
+    "lesson": "L12"
+  },
+  {
+    "english": "easy",
+    "japanese": "簡単な",
+    "lesson": "L12"
+  },
+  {
+    "english": "wet",
+    "japanese": "ぬれた",
+    "lesson": "L12"
+  },
+  {
+    "english": "dry",
+    "japanese": "乾いた",
+    "lesson": "L12"
+  },
+  {
+    "english": "rainforest",
+    "japanese": "熱帯雨林",
+    "lesson": "L12"
+  },
+  {
+    "english": "aquarium",
+    "japanese": "水族館",
+    "lesson": "L12"
+  },
+  {
+    "english": "real",
+    "japanese": "現実の，実際の",
+    "lesson": "L12"
+  },
+  {
+    "english": "South America",
+    "japanese": "南アメリカ",
+    "lesson": "L12"
+  },
+  {
+    "english": "colorful",
+    "japanese": "色彩豊かな",
+    "lesson": "L12"
+  },
+  {
+    "english": "butterfly",
+    "japanese": "チョウ《昆虫》",
+    "lesson": "L12"
+  },
+  {
+    "english": "bicycle",
+    "japanese": "自転車",
+    "lesson": "L12"
+  },
+  {
+    "english": "Brazil",
+    "japanese": "ブラジル",
+    "lesson": "L12"
+  },
+  {
+    "english": "snake",
+    "japanese": "ヘビ",
+    "lesson": "L12"
+  },
+  {
+    "english": "frog",
+    "japanese": "カエル",
+    "lesson": "L12"
+  },
+  {
+    "english": "more",
+    "japanese": "もっと《2音節以上の形容詞や副詞につけて比較級を作る》",
+    "lesson": "L12"
+  },
+  {
+    "english": "than",
+    "japanese": "～よりも《比較級で用いられる》",
+    "lesson": "L12"
+  },
+  {
+    "english": "strong",
+    "japanese": "強い",
+    "lesson": "L12"
+  },
+  {
+    "english": "poison",
+    "japanese": "毒",
+    "lesson": "L12"
+  },
+  {
+    "english": "section",
+    "japanese": "区域，部門",
+    "lesson": "L12"
+  },
+  {
+    "english": "afraid",
+    "japanese": "おそれて，心配して",
+    "lesson": "L12"
+  },
+  {
+    "english": "large",
+    "japanese": "大きい，広い",
+    "lesson": "L12"
+  },
+  {
+    "english": "useful",
+    "japanese": "役に立つ",
+    "lesson": "L12"
+  },
+  {
+    "english": "Golden Gate Park",
+    "japanese": "ゴールデンゲートパーク",
+    "lesson": "L12"
+  },
+  {
+    "english": "the California Academy of Sciences",
+    "japanese": "カリフォルニア科学アカデミー",
+    "lesson": "L12"
+  },
+  {
+    "english": "exhibit",
+    "japanese": "展示，展示品",
+    "lesson": "L12"
+  },
+  {
+    "english": "planetarium",
+    "japanese": "プラネタリウム",
+    "lesson": "L12"
+  },
+  {
+    "english": "carefully",
+    "japanese": "注意深く",
+    "lesson": "L12"
+  },
+  {
+    "english": "score",
+    "japanese": "点数，成績",
+    "lesson": "L12"
+  },
+  {
+    "english": "worst",
+    "japanese": "最も悪い《bad，ill の最上級》",
+    "lesson": "L12"
+  },
+  {
+    "english": "ill",
+    "japanese": "病気の",
+    "lesson": "L12"
+  },
+  {
+    "english": "badly",
+    "japanese": "ひどく",
+    "lesson": "L12"
+  },
+  {
+    "english": "worse",
+    "japanese": "より悪い《bad，ill の比較級》",
+    "lesson": "L12"
+  },
+  {
+    "english": "less",
+    "japanese": "より少ない《little の比較級》",
+    "lesson": "L12"
+  },
+  {
+    "english": "least",
+    "japanese": "最も少ない《little の最上級》",
+    "lesson": "L12"
+  },
+  {
+    "english": "each",
+    "japanese": "それぞれの",
+    "lesson": "L12"
+  },
+  {
+    "english": "alligator",
+    "japanese": "ワニ",
+    "lesson": "L12"
+  },
+  {
+    "english": "Anika",
+    "japanese": "アニカ《女性名》",
+    "lesson": "L12"
+  },
+  {
+    "english": "e-mail",
+    "japanese": "Eメール",
+    "lesson": "L12"
+  },
+  {
+    "english": "Delhi",
+    "japanese": "デリー《地名》",
+    "lesson": "L12"
+  },
+  {
+    "english": "Mumbai",
+    "japanese": "ムンバイ《地名》",
+    "lesson": "L12"
+  },
+  {
+    "english": "especially",
+    "japanese": "特に，とりわけ",
+    "lesson": "L12"
+  },
+  {
+    "english": "interested",
+    "japanese": "興味を持っている",
+    "lesson": "L12"
+  },
+  {
+    "english": "sign",
+    "japanese": "標識，看板",
+    "lesson": "L12"
+  },
+  {
+    "english": "language",
+    "japanese": "言語，言葉",
+    "lesson": "L12"
+  },
+  {
+    "english": "India",
+    "japanese": "インド",
+    "lesson": "L12"
+  },
+  {
+    "english": "Indian",
+    "japanese": "インド（人）の",
+    "lesson": "L12"
+  },
+  {
+    "english": "sincerely",
+    "japanese": "心から",
+    "lesson": "L12"
+  },
+  {
+    "english": "reply",
+    "japanese": "返事，答え",
+    "lesson": "L12"
+  },
+  {
+    "english": "Hindi",
+    "japanese": "ヒンディー語",
+    "lesson": "L12"
+  },
+  {
+    "english": "main",
+    "japanese": "主な，主要な",
+    "lesson": "L12"
+  },
+  {
+    "english": "widely-spoken",
+    "japanese": "広く話されている，使われている",
+    "lesson": "L12"
+  },
+  {
+    "english": "billion",
+    "japanese": "10億（の）",
+    "lesson": "L12"
+  },
+  {
+    "english": "state",
+    "japanese": "《米国などの》州",
+    "lesson": "L12"
+  },
+  {
+    "english": "ethnic",
+    "japanese": "民族の",
+    "lesson": "L12"
+  },
+  {
+    "english": "group",
+    "japanese": "グループ，集団",
+    "lesson": "L12"
+  },
+  {
+    "english": "same",
+    "japanese": "同じ",
+    "lesson": "L12"
+  },
+  {
+    "english": "bank note",
+    "japanese": "紙幣，銀行券",
+    "lesson": "L12"
+  },
+  {
+    "english": "local",
+    "japanese": "地元の，その地方の",
+    "lesson": "L12"
+  },
+  {
+    "english": "both",
+    "japanese": "両方とも",
+    "lesson": "L12"
+  },
+  {
+    "english": "care",
+    "japanese": "世話，注意",
+    "lesson": "L12"
+  },
+  {
+    "english": "banana",
+    "japanese": "バナナ",
+    "lesson": "L12"
+  },
+  {
+    "english": "strawberry",
+    "japanese": "イチゴ",
+    "lesson": "L12"
+  },
+  {
+    "english": "grape",
+    "japanese": "ブドウ",
+    "lesson": "L12"
+  },
+  {
+    "english": "peach",
+    "japanese": "モモ",
+    "lesson": "L12"
+  },
+  {
+    "english": "pear",
+    "japanese": "セイヨウナシ",
+    "lesson": "L12"
+  },
+  {
+    "english": "pineapple",
+    "japanese": "パイナップル",
+    "lesson": "L12"
+  },
+  {
+    "english": "sweater",
+    "japanese": "セーター",
+    "lesson": "L12"
+  },
+  {
+    "english": "thick",
+    "japanese": "厚い，太い",
+    "lesson": "L12"
+  }
+];
+
+    const DEFAULT_TEST_COUNT=20, ONE_DAY_MS=24*60*60*1000, STORAGE_KEY="english_vocab_mistakes";
+    let wordList=[], currentQuestions=[], currentIndex=0, correctCount=0, currentWrongAnswers=[], hasAnswered=false, currentIsReviewMode=false;
+
+    const wordDataStatus=document.getElementById("wordDataStatus"), lessonList=document.getElementById("lessonList"), questionCountInput=document.getElementById("questionCountInput"), errorMessage=document.getElementById("errorMessage"), selectAllLessonsBtn=document.getElementById("selectAllLessonsBtn"), clearLessonsBtn=document.getElementById("clearLessonsBtn"), startNormalBtn=document.getElementById("startNormalBtn"), startReviewBtn=document.getElementById("startReviewBtn"), showMistakesBtn=document.getElementById("showMistakesBtn"), quizSection=document.getElementById("quizSection"), quizMode=document.getElementById("quizMode"), questionCounter=document.getElementById("questionCounter"), japaneseQuestion=document.getElementById("japaneseQuestion"), answerInput=document.getElementById("answerInput"), feedback=document.getElementById("feedback"), correctAnswer=document.getElementById("correctAnswer"), submitBtn=document.getElementById("submitBtn"), nextBtn=document.getElementById("nextBtn"), resultSection=document.getElementById("resultSection"), resultScore=document.getElementById("resultScore"), wrongList=document.getElementById("wrongList"), restartBtn=document.getElementById("restartBtn"), mistakeSection=document.getElementById("mistakeSection"), mistakeList=document.getElementById("mistakeList"), clearMistakesBtn=document.getElementById("clearMistakesBtn");
+
+    initializeApp();
+    selectAllLessonsBtn.addEventListener("click",selectAllLessons); clearLessonsBtn.addEventListener("click",clearLessons); startNormalBtn.addEventListener("click",startNormalTest); startReviewBtn.addEventListener("click",startReviewTest); showMistakesBtn.addEventListener("click",renderMistakeList); submitBtn.addEventListener("click",submitAnswer); nextBtn.addEventListener("click",goNextQuestion); restartBtn.addEventListener("click",()=>{hideAllMainSections();window.scrollTo({top:0,behavior:"smooth"})}); clearMistakesBtn.addEventListener("click",clearMistakes);
+    answerInput.addEventListener("keydown",e=>{if(e.key==="Enter"){if(!hasAnswered)submitAnswer();else goNextQuestion();}});
+
+    function initializeApp(){try{wordList=normalizeWordData(WORD_DATA);renderLessonCheckboxes(wordList);selectAllLessons();wordDataStatus.textContent=`${wordList.length}語を読み込みました。Lessonを選んで開始してください。`;}catch(error){wordList=[];startNormalBtn.disabled=true;wordDataStatus.textContent="単語データの読み込みに失敗しました。";showError(error.message);}}
+    function normalizeWordData(data){if(!Array.isArray(data))throw new Error("WORD_DATAは配列で指定してください。");const normalized=data.map((row,index)=>({english:String(row.english||"").trim(),japanese:String(row.japanese||"").trim(),lesson:String(row.lesson||"").trim(),originalIndex:index+1}));const invalidRows=normalized.filter(w=>!w.english||!w.japanese||!w.lesson);if(invalidRows.length>0)throw new Error(`english, japanese, lesson のいずれかが空のデータがあります。該当位置: ${invalidRows.map(w=>w.originalIndex).join(", ")}`);return normalized;}
+    function renderLessonCheckboxes(words){const lessons=getLessons(words);lessonList.innerHTML=lessons.map(lesson=>{const count=words.filter(w=>w.lesson===lesson).length;return `<label class="lesson-item"><input type="checkbox" name="lesson" value="${escapeHtml(lesson)}" /><span>${escapeHtml(lesson)}（${count}）</span></label>`}).join("");}
+    function getLessons(words){return Array.from(new Set(words.map(w=>w.lesson))).sort((a,b)=>a.localeCompare(b,"ja",{numeric:true}));}
+    function selectAllLessons(){getLessonCheckboxes().forEach(c=>c.checked=true)}
+    function clearLessons(){getLessonCheckboxes().forEach(c=>c.checked=false)}
+    function getLessonCheckboxes(){return Array.from(document.querySelectorAll('input[name="lesson"]'))}
+    function getSelectedLessons(){return getLessonCheckboxes().filter(c=>c.checked).map(c=>c.value)}
+    function getRequestedQuestionCount(){const value=Number(questionCountInput.value);if(!Number.isInteger(value)||value<1)throw new Error("問題数は1以上の整数で入力してください。");return value;}
+
+    function startNormalTest(){try{clearError();if(wordList.length===0)throw new Error("単語データがありません。");const selectedLessons=getSelectedLessons();if(selectedLessons.length===0)throw new Error("出題するLessonを1つ以上選択してください。");const requestedCount=getRequestedQuestionCount();const targetWords=wordList.filter(w=>selectedLessons.includes(w.lesson));if(targetWords.length===0)throw new Error("選択したLessonに出題できる単語がありません。");const count=Math.min(requestedCount,targetWords.length);startQuiz(shuffleArray(targetWords).slice(0,count),`通常テスト：${selectedLessons.join(", ")}`,false);}catch(error){showError(error.message)}}
+    function startReviewTest(){const reviewWords=getRecentMistakes();if(reviewWords.length===0){hideAllMainSections();resultSection.classList.remove("hidden");resultScore.textContent="直近1日以内の間違いはありません。";wrongList.innerHTML="";return;}let requestedCount=DEFAULT_TEST_COUNT;try{requestedCount=getRequestedQuestionCount()}catch(error){requestedCount=DEFAULT_TEST_COUNT}const count=Math.min(requestedCount,reviewWords.length);startQuiz(shuffleArray(reviewWords).slice(0,count),"直近1日以内の間違い復習",true);}
+    function startQuiz(questions,modeText,isReviewMode=false){hideAllMainSections();quizSection.classList.remove("hidden");currentQuestions=questions;currentIndex=0;correctCount=0;currentWrongAnswers=[];currentIsReviewMode=isReviewMode;quizMode.textContent=modeText;showQuestion();}
+
+    function showQuestion(){hasAnswered=false;const q=currentQuestions[currentIndex];questionCounter.textContent=`${currentIndex+1} / ${currentQuestions.length}`;japaneseQuestion.textContent=q.japanese;answerInput.value="";answerInput.disabled=false;answerInput.focus();feedback.className="feedback";feedback.textContent="";correctAnswer.classList.add("hidden");correctAnswer.textContent="";submitBtn.classList.remove("hidden");nextBtn.classList.add("hidden");}
+    function submitAnswer(){if(hasAnswered)return;const q=currentQuestions[currentIndex];const userAnswer=normalizeAnswer(answerInput.value), correct=normalizeAnswer(q.english);if(userAnswer===""){showError("解答を入力してください。");answerInput.focus();return;}clearError();hasAnswered=true;answerInput.disabled=true;submitBtn.classList.add("hidden");nextBtn.classList.remove("hidden");if(userAnswer===correct){correctCount++;feedback.className="feedback correct";feedback.textContent=currentIsReviewMode?"正解です。復習リストから削除しました。":"正解です。";if(currentIsReviewMode)removeMistake(q);}else{feedback.className="feedback incorrect";feedback.textContent=currentIsReviewMode?"不正解です。この単語は復習リストに残ります。":"不正解です。";correctAnswer.classList.remove("hidden");correctAnswer.textContent=`正解: ${q.english}`;currentWrongAnswers.push(q);saveMistake(q);}nextBtn.focus();}
+    function goNextQuestion(){if(!hasAnswered)return;currentIndex++;if(currentIndex>=currentQuestions.length)showResult();else showQuestion();}
+    function normalizeAnswer(value){return String(value).trim().toLowerCase();}
+
+    function showResult(){hideAllMainSections();resultSection.classList.remove("hidden");const total=currentQuestions.length, percentage=Math.round((correctCount/total)*100);resultScore.textContent=`${total}問中 ${correctCount}問正解（${percentage}%）`;if(currentWrongAnswers.length===0){wrongList.innerHTML=currentIsReviewMode?"<p>今回の復習で間違えた単語はありません。</p>":"<p>間違えた単語はありません。</p>";return;}wrongList.innerHTML=`<h3>今回間違えた単語</h3>${createWordTable(currentWrongAnswers)}`;}
+
+    function getAllMistakes(){try{const raw=localStorage.getItem(STORAGE_KEY);return raw?JSON.parse(raw):[]}catch(error){console.error(error);return[]}}
+    function saveMistake(word){const mistakes=getAllMistakes();const key=normalizeAnswer(word.english);const index=mistakes.findIndex(item=>normalizeAnswer(item.english)===key);const record={english:word.english,japanese:word.japanese,lesson:word.lesson||"",timestamp:Date.now()};if(index>=0)mistakes[index]=record;else mistakes.push(record);localStorage.setItem(STORAGE_KEY,JSON.stringify(mistakes));}
+    function removeMistake(word){const key=normalizeAnswer(word.english);const mistakes=getAllMistakes().filter(item=>normalizeAnswer(item.english)!==key);localStorage.setItem(STORAGE_KEY,JSON.stringify(mistakes));}
+    function getRecentMistakes(){const now=Date.now();return getAllMistakes().filter(item=>now-item.timestamp<=ONE_DAY_MS).sort((a,b)=>b.timestamp-a.timestamp);}
+    function renderMistakeList(){hideAllMainSections();mistakeSection.classList.remove("hidden");const mistakes=getAllMistakes();if(mistakes.length===0){mistakeList.innerHTML="<p>保存中の間違いはありません。</p>";return;}const sorted=[...mistakes].sort((a,b)=>b.timestamp-a.timestamp);mistakeList.innerHTML=`<p><strong>${mistakes.length}件</strong>の間違いが保存されています。</p><table><thead><tr><th>Lesson</th><th>英単語</th><th>日本語</th><th>日時</th></tr></thead><tbody>${sorted.map(item=>`<tr><td>${escapeHtml(item.lesson||"")}</td><td>${escapeHtml(item.english)}</td><td>${escapeHtml(item.japanese)}</td><td>${formatDate(item.timestamp)}</td></tr>`).join("")}</tbody></table>`;}
+    function clearMistakes(){if(!confirm("保存中の間違い記録をすべて削除しますか？"))return;localStorage.removeItem(STORAGE_KEY);renderMistakeList();}
+
+    function shuffleArray(array){const copied=[...array];for(let i=copied.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[copied[i],copied[j]]=[copied[j],copied[i]]}return copied;}
+    function hideAllMainSections(){quizSection.classList.add("hidden");resultSection.classList.add("hidden");mistakeSection.classList.add("hidden");clearError();}
+    function showError(message){errorMessage.textContent=message;errorMessage.style.display="block";}
+    function clearError(){errorMessage.textContent="";errorMessage.style.display="none";}
+    function createWordTable(words){return `<table><thead><tr><th>Lesson</th><th>英単語</th><th>日本語</th></tr></thead><tbody>${words.map(w=>`<tr><td>${escapeHtml(w.lesson||"")}</td><td>${escapeHtml(w.english)}</td><td>${escapeHtml(w.japanese)}</td></tr>`).join("")}</tbody></table>`;}
+    function formatDate(timestamp){return new Date(timestamp).toLocaleString("ja-JP",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});}
+    function escapeHtml(value){return String(value).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");}
+  </script>
+</body>
+</html>
